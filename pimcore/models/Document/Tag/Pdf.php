@@ -11,7 +11,7 @@
  *
  * @category   Pimcore
  * @package    Document
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -517,9 +517,25 @@ HTML;
      */
     public function getId()
     {
-        return $this->id;
+        return (int)  $this->id;
     }
 
-
-
+    /**
+     * Rewrites id from source to target, $idMapping contains
+     * array(
+     *  "document" => array(
+     *      SOURCE_ID => TARGET_ID,
+     *      SOURCE_ID => TARGET_ID
+     *  ),
+     *  "object" => array(...),
+     *  "asset" => array(...)
+     * )
+     * @param array $idMapping
+     * @return void
+     */
+    public function rewriteIds($idMapping) {
+        if(array_key_exists("asset", $idMapping) and array_key_exists($this->getId(), $idMapping["asset"])) {
+            $this->setId($idMapping["asset"][$this->getId()]);
+        }
+    }
 }

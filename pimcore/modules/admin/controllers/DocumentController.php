@@ -9,7 +9,7 @@
  * It is also available through the world-wide-web at this URL:
  * http://www.pimcore.org/license
  *
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -150,6 +150,9 @@ class Admin_DocumentController extends Pimcore_Controller_Action_Admin {
                 switch ($this->getParam("type")) {
                     case "page":
                         $document = Document_Page::create($this->getParam("parentId"), $createValues);
+                        $document->setTitle($this->getParam('title', null));
+                        $document->setName($this->getParam('name', null));
+                        $document->save();
                         $success = true;
                         break;
                     case "snippet":
@@ -350,6 +353,16 @@ class Admin_DocumentController extends Pimcore_Controller_Action_Admin {
         $allowUpdate = true;
 
         $document = Document::getById($this->getParam("id"));
+
+        // this prevents the user from renaming, relocating (actions in the tree) if the newest version isn't the published one
+        // the reason is that otherwise the content of the newer not published version will be overwritten
+        if($document instanceof Document_PageSnippet) {
+            $latestVersion = $document->getLatestVersion();
+            if($latestVersion && $latestVersion->getData()->getModificationDate() != $document->getModificationDate()) {
+                $this->_helper->json(array("success" => false, "message" => "You can't relocate if there's a newer not published version"));
+            }
+        }
+
         if ($document->isAllowed("settings")) {
 
             // if the position is changed the path must be changed || also from the childs
@@ -378,10 +391,6 @@ class Admin_DocumentController extends Pimcore_Controller_Action_Admin {
             }
 
             if ($allowUpdate) {
-                if ($this->getParam("key") || $this->getParam("parentId")) {
-                    $oldPath = $document->getPath() . $document->getKey();
-                }
-
                 $blockedVars = array("controller", "action", "module");
 
                 if(!$document->isAllowed("rename") && $this->getParam("key")){
@@ -556,9 +565,10 @@ class Admin_DocumentController extends Pimcore_Controller_Action_Admin {
         $version = Version::getById($this->getParam("id"));
         $document = $version->loadData();
 
-        $key = "document_" . $document->getId();
-        $session = new Zend_Session_Namespace("pimcore_documents");
-        $session->$key = $document;
+        Pimcore_Tool_Session::useSession(function ($session) use ($document) {
+            $key = "document_" . $document->getId();
+            $session->$key = $document;
+        }, "pimcore_documents");
 
         $this->removeViewRenderer();
     }
@@ -628,8 +638,10 @@ class Admin_DocumentController extends Pimcore_Controller_Action_Admin {
 
         $transactionId = time();
         $pasteJobs = array();
-        $session = new Zend_Session_Namespace("pimcore_copy");
-        $session->$transactionId = array("idMapping" => array());
+
+        Pimcore_Tool_Session::useSession(function ($session) use ($transactionId) {
+            $session->$transactionId = array("idMapping" => array());
+        }, "pimcore_copy");
 
         if ($this->getParam("type") == "recursive" || $this->getParam("type") == "recursive-update-references") {
 
@@ -712,8 +724,11 @@ class Admin_DocumentController extends Pimcore_Controller_Action_Admin {
 
     public function copyRewriteIdsAction () {
 
-        $session = new Zend_Session_Namespace("pimcore_copy");
-        $idStore = $session->{$this->getParam("transactionId")};
+        $transactionId = $this->getParam("transactionId");
+
+        $idStore = Pimcore_Tool_Session::useSession(function ($session) use ($transactionId) {
+            return $session->$transactionId;
+        }, "pimcore_copy");
 
         if(!array_key_exists("rewrite-stack",$idStore)) {
             $idStore["rewrite-stack"] = array_values($idStore["idMapping"]);
@@ -722,70 +737,22 @@ class Admin_DocumentController extends Pimcore_Controller_Action_Admin {
         $id = array_shift($idStore["rewrite-stack"]);
         $document = Document::getById($id);
 
-        // rewriting elements only for snippets and pages
-        if($document instanceof Document_PageSnippet) {
-            if($this->getParam("enableInheritance") == "true") {
-                $elements = $document->getElements();
-                $changedElements = array();
-                $contentMaster = $document->getContentMasterDocument();
-                if($contentMaster instanceof Document_PageSnippet) {
-                    $contentMasterElements = $contentMaster->getElements();
-                    foreach ($contentMasterElements as $contentMasterElement) {
-                        if(method_exists($contentMasterElement, "rewriteIds")) {
-                            $element = clone $contentMasterElement;
-                            $element->rewriteIds($idStore["idMapping"]);
+        if($document) {
+            // create rewriteIds() config parameter
+            $rewriteConfig = array("document" => $idStore["idMapping"]);
 
-                            if(serialize($element) != serialize($contentMasterElement)) {
-                                $changedElements[] = $element;
-                            }
-                        }
-                    }
-                }
+            $document = Document_Service::rewriteIds($document, $rewriteConfig, array(
+                "enableInheritance" => ($this->getParam("enableInheritance") == "true") ? true : false
+            ));
 
-                if(count($changedElements) > 0) {
-                    $elements = $changedElements;
-                }
-            } else {
-                $elements = $document->getElements();
-                foreach ($elements as &$element) {
-                    if(method_exists($element, "rewriteIds")) {
-                        $element->rewriteIds($idStore["idMapping"]);
-                    }
-                }
-            }
-
-            $document->setElements($elements);
-        } else if ($document instanceof Document_Hardlink) {
-            if($document->getSourceId() && array_key_exists((int) $document->getSourceId(), $idStore["idMapping"])) {
-                $document->setSourceId($idStore["idMapping"][(int) $document->getSourceId()]);
-            }
-        } else if ($document instanceof Document_Link) {
-            if($document->getLinktype() == "internal" && $document->getInternalType() == "document" && array_key_exists((int) $document->getInternal(), $idStore["idMapping"])) {
-                $document->setInternal($idStore["idMapping"][(int) $document->getInternal()]);
-            }
+            $document->setUserModification($this->getUser()->getId());
+            $document->save();
         }
-
-        // rewriting properties
-        $properties = $document->getProperties();
-        foreach ($properties as &$property) {
-            if(!$property->isInherited()) {
-                if($property->getType() == "document") {
-                    if($property->getData() instanceof Document) {
-                        if(array_key_exists((int) $property->getData()->getId(), $idStore["idMapping"])) {
-                            $property->setData(Document::getById($idStore["idMapping"][(int) $property->getData()->getId()]));
-                        }
-                    }
-                }
-            }
-        }
-        $document->setProperties($properties);
-        $document->setUserModification($this->getUser()->getId());
-        
-        $document->save();
-        
 
         // write the store back to the session
-        $session->{$this->getParam("transactionId")} = $idStore;
+        Pimcore_Tool_Session::useSession(function ($session) use ($transactionId, $idStore) {
+            $session->$transactionId = $idStore;
+        }, "pimcore_copy");
 
         $this->_helper->json(array(
             "success" => true,
@@ -797,7 +764,7 @@ class Admin_DocumentController extends Pimcore_Controller_Action_Admin {
         $success = false;
         $sourceId = intval($this->getParam("sourceId"));
         $source = Document::getById($sourceId);
-        $session = new Zend_Session_Namespace("pimcore_copy");
+        $session = Pimcore_Tool_Session::get("pimcore_copy");
         
         $targetId = intval($this->getParam("targetId"));
         if($this->getParam("targetParentId")) {
@@ -829,6 +796,8 @@ class Admin_DocumentController extends Pimcore_Controller_Action_Admin {
                         if($this->getParam("saveParentId")) {
                             $session->{$this->getParam("transactionId")}["parentId"] = $newDocument->getId();
                         }
+
+                        Pimcore_Tool_Session::writeClose();
                     }
                     else if ($this->getParam("type") == "replace") {
                         $this->_documentService->copyContents($target, $source);
@@ -1166,101 +1135,6 @@ class Admin_DocumentController extends Pimcore_Controller_Action_Admin {
         $this->_helper->json($documents);
     }
 
-    /**
-     * page & snippet controller/action/template selector store providers
-     */
-
-
-    public function getAvailableControllersAction() {
-
-        $controllers = array();
-        $controllerFiles = scandir(PIMCORE_WEBSITE_PATH . "/controllers");
-        foreach ($controllerFiles as $file) {
-            $dat = array();
-            if(strpos($file, ".php") !== false) {
-                $file = lcfirst(str_replace("Controller.php","",$file));
-                $dat["name"] = strtolower(preg_replace("/[A-Z]/","-\\0", $file));
-                $controllers[] = $dat;
-            }
-        }
-
-        $this->_helper->json(array(
-            "data" => $controllers
-        ));
-    }
-
-    public function getAvailableActionsAction () {
-
-        $actions = array();
-        $controller = $this->getParam("controllerName");
-        $controllerClass = str_replace("-", " ", $controller);
-        $controllerClass = str_replace(" ", "", ucwords($controllerClass));
-        $controllerFile = PIMCORE_WEBSITE_PATH . "/controllers/" . $controllerClass . "Controller.php";
-        if(is_file($controllerFile)) {
-            preg_match_all("/function[ ]+([a-zA-Z0-9]+)Action/i", file_get_contents($controllerFile), $matches);
-            foreach ($matches[1] as $match) {
-                $dat = array();
-                $dat["name"] = strtolower(preg_replace("/[A-Z]/","-\\0", $match));
-                $actions[] = $dat;
-            }
-        }
-
-        $this->_helper->json(array(
-            "data" => $actions
-        ));
-    }
-
-    public function getAvailableTemplatesAction () {
-
-        $templates = array();
-        $viewPath = PIMCORE_WEBSITE_PATH . "/views/scripts";
-        $files = rscandir($viewPath . "/");
-        foreach ($files as $file) {
-            $dat = array();
-            if(strpos($file, Pimcore_View::getViewScriptSuffix()) !== false) {
-                $dat["path"] = str_replace($viewPath, "", $file);
-                $templates[] = $dat;
-            }
-        }
-
-        $this->_helper->json(array(
-            "data" => $templates
-        ));
-    }
-
-    public function openByUrlAction () {
-
-        $urlParts = parse_url($this->getParam("url"));
-        if($urlParts["path"]) {
-            $document = Document::getByPath($urlParts["path"]);
-
-            // search for a page in a site
-            if(!$document) {
-                $sitesList = new Site_List();
-                $sitesObjects = $sitesList->load();
-
-                foreach ($sitesObjects as $site) {
-                    if ($site->getRootDocument() && in_array($urlParts["host"],$site->getDomains())) {
-                        if($document = Document::getByPath($site->getRootDocument() . $urlParts["path"])) {
-                            break;
-                        }
-                    }
-                }
-            }
-
-            if($document) {
-                $this->_helper->json(array(
-                    "success" => true,
-                    "id" => $document->getId(),
-                    "type" => $document->getType()
-                ));
-            }
-        }
-
-        $this->_helper->json(array(
-            "success" => false
-        ));
-    }
 
     public function convertAction() {
 

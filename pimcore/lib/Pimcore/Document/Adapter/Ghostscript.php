@@ -9,7 +9,7 @@
  * It is also available through the world-wide-web at this URL:
  * http://www.pimcore.org/license
  *
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
  
@@ -32,6 +32,20 @@ class Pimcore_Document_Adapter_Ghostscript extends Pimcore_Document_Adapter {
             }
         } catch (Exception $e) {
             Logger::warning($e);
+        }
+
+        return false;
+    }
+
+    /**
+     * @param string $fileType
+     * @return bool
+     */
+    public function isFileTypeSupported($fileType) {
+
+        // it's also possible to pass a path or filename
+        if(preg_match("/\.?pdf$/", $fileType)) {
+            return true;
         }
 
         return false;
@@ -77,7 +91,7 @@ class Pimcore_Document_Adapter_Ghostscript extends Pimcore_Document_Adapter {
         // avoid timeouts
         set_time_limit(250);
 
-        if(!preg_match("/\.pdf$/", $path)) {
+        if(!$this->isFileTypeSupported($path)) {
             $message = "Couldn't load document " . $path . " only PDF documents are currently supported";
             Logger::error($message);
             throw new \Exception($message);
@@ -86,6 +100,21 @@ class Pimcore_Document_Adapter_Ghostscript extends Pimcore_Document_Adapter {
         $this->path = $path;
 
         return $this;
+    }
+
+    public function getPdf($path = null) {
+
+        if(!$path && $this->path) {
+            $path = $this->path;
+        }
+
+        if(preg_match("/\.?pdf$/", $path)) { // only PDF's are supported
+            return $path;
+        }
+
+        $message = "Couldn't load document " . $path . " only PDF documents are currently supported";
+        Logger::error($message);
+        throw new \Exception($message);
     }
 
     /**
@@ -110,11 +139,39 @@ class Pimcore_Document_Adapter_Ghostscript extends Pimcore_Document_Adapter {
      * @param int $page
      * @return $this|bool
      */
-    public function saveImage($path, $page = 1) {
+    public function saveImage($path, $page = 1, $resolution = 200) {
 
         try {
-            Pimcore_Tool_Console::exec(self::getGhostscriptCli() . " -sDEVICE=png16m -dFirstPage=" . $page . " -dLastPage=" . $page . " -r200 -o " . $path . " " . $this->path);
+            Pimcore_Tool_Console::exec(self::getGhostscriptCli() . " -sDEVICE=png16m -dFirstPage=" . $page . " -dLastPage=" . $page . " -r" . $resolution . " -o " . $path . " " . $this->path);
             return $this;
+        } catch (Exception $e) {
+            Logger::error($e);
+            return false;
+        }
+    }
+
+    public function getText($page = null, $path = null) {
+        try {
+
+            $path = $path ? $path : $this->path;
+
+            if($page) {
+                $pageRange = "-dFirstPage=" . $page . " -dLastPage=" . $page . " ";
+            }
+
+            $textFile = PIMCORE_SYSTEM_TEMP_DIRECTORY . "/pdf-text-extract-" . uniqid() . ".txt";
+            Pimcore_Tool_Console::exec(self::getGhostscriptCli() . " -dBATCH -dNOPAUSE -sDEVICE=txtwrite " . $pageRange . "-dTextFormat=2 -sOutputFile=" . $textFile . " " . $path);
+
+            if(is_file($textFile)) {
+                $text =  file_get_contents($textFile);
+
+                // this is a little bit strange the default option -dTextFormat=3 from ghostscript should return utf-8 but it doesn't
+                // so we use option 2 which returns UCS-2LE and convert it here back to UTF-8 which works fine
+                $text = mb_convert_encoding($text, 'UTF-8', 'UCS-2LE');
+                unlink($textFile);
+                return $text;
+            }
+
         } catch (Exception $e) {
             Logger::error($e);
             return false;

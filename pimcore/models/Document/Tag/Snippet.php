@@ -11,7 +11,7 @@
  *
  * @category   Pimcore
  * @package    Document
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -46,6 +46,22 @@ class Document_Tag_Snippet extends Document_Tag {
      */
     public function getData() {
         return $this->id;
+    }
+
+    /**
+     * @param int $id
+     */
+    public function setId($id)
+    {
+        $this->id = $id;
+    }
+
+    /**
+     * @return int
+     */
+    public function getId()
+    {
+        return (int) $this->id;
     }
 
     /**
@@ -202,13 +218,22 @@ class Document_Tag_Snippet extends Document_Tag {
 
 
     /**
-     * Rewrites id from source to target, $idMapping contains sourceId => targetId mapping
+     * Rewrites id from source to target, $idMapping contains
+     * array(
+     *  "document" => array(
+     *      SOURCE_ID => TARGET_ID,
+     *      SOURCE_ID => TARGET_ID
+     *  ),
+     *  "object" => array(...),
+     *  "asset" => array(...)
+     * )
      * @param array $idMapping
      * @return void
      */
     public function rewriteIds($idMapping) {
-        if(array_key_exists((int) $this->id, $idMapping)) {
-            $this->id = $idMapping[(int) $this->id];
+        $id = $this->getId();
+        if(array_key_exists("document",$idMapping) && array_key_exists($id, $idMapping["document"])) {
+            $this->id = $idMapping["document"][$id];
         }
     }
 

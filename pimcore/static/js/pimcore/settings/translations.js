@@ -8,7 +8,7 @@
  * It is also available through the world-wide-web at this URL:
  * http://www.pimcore.org/license
  *
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -216,7 +216,18 @@ pimcore.settings.translations = Class.create({
     },
 
     doExport:function(){
-        window.open(this.exportUrl);
+
+        if(this.filterField.getValue()) {
+            Ext.MessageBox.confirm("", t("filter_active_message"), function (buttonValue) {
+                if (buttonValue == "yes") {
+                    window.open(Ext.urlAppend(this.exportUrl, "filter=" + this.filterField.getValue()));
+                } else {
+                    window.open(this.exportUrl);
+                }
+            }.bind(this));
+        } else {
+            window.open(this.exportUrl);
+        }
     },
 
     onAdd: function (btn, ev) {

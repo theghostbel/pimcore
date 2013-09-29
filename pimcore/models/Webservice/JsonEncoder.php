@@ -11,20 +11,24 @@
  *
  * @category   Pimcore
  * @package    Webservice
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
 class Webservice_JsonEncoder {
 
-    public function encode($data) {
+    public function encode($data,$returnData = false) {
         $data = Zend_Json::encode($data, null, array());
 
-        $response = Zend_Controller_Front::getInstance()->getResponse();
-        $response->setHeader('Content-Type', 'application/json', true);
-        $response->setBody($data);
-        $response->sendResponse();
-        exit;
+        if($returnData){
+            return $data;
+        }else{
+            $response = Zend_Controller_Front::getInstance()->getResponse();
+            $response->setHeader('Content-Type', 'application/json', true);
+            $response->setBody($data);
+            $response->sendResponse();
+            exit;
+        }
     }
 
     public function decode($data){

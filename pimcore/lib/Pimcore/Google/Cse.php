@@ -9,7 +9,7 @@
  * It is also available through the world-wide-web at this URL:
  * http://www.pimcore.org/license
  *
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -49,7 +49,7 @@ class Pimcore_Google_Cse implements Zend_Paginator_Adapter_Interface, Zend_Pagin
 
 
         if($client) {
-            $search = new apiCustomsearchService($client);
+            $search = new Google_CustomsearchService($client);
 
             // determine language
             $language = "";

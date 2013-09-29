@@ -11,7 +11,7 @@
  *
  * @category   Pimcore
  * @package    Document
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -60,8 +60,14 @@ class Document_Service extends Element_Service {
 
         // add the view script path from the website module to the view, because otherwise it's not possible to call
         // this method out of other modules to render documents, eg. sending e-mails out of an plugin with Pimcore_Mail
-        $view->addScriptPath(PIMCORE_FRONTEND_MODULE . "/views/layouts");
-        $view->addScriptPath(PIMCORE_FRONTEND_MODULE . "/views/scripts");
+        $moduleDirectory = Zend_Controller_Front::getInstance()->getModuleDirectory($document->getModule());
+        if (!empty($moduleDirectory)) {
+            $view->addScriptPath($moduleDirectory . "/views/layouts");
+            $view->addScriptPath($moduleDirectory . "/views/scripts");
+        } else {
+            $view->addScriptPath(PIMCORE_FRONTEND_MODULE . "/views/layouts");
+            $view->addScriptPath(PIMCORE_FRONTEND_MODULE . "/views/scripts");
+        }
 
         $documentBackup = null;
         if($view->document) {
@@ -324,6 +330,8 @@ class Document_Service extends Element_Service {
      */
     public static function loadAllDocumentFields ( $doc ) {
 
+        $doc->getProperties();
+
         if($doc instanceof Document_PageSnippet) {
             foreach($doc->getElements() as $name => $data) {
                 if(method_exists($data, "load")) {
@@ -365,6 +373,75 @@ class Document_Service extends Element_Service {
      */
     public static function isValidType ($type) {
         return in_array($type, Document::getTypes());
+    }
+
+    /**
+     * Rewrites id from source to target, $rewriteConfig contains
+     * array(
+     *  "document" => array(
+     *      SOURCE_ID => TARGET_ID,
+     *      SOURCE_ID => TARGET_ID
+     *  ),
+     *  "object" => array(...),
+     *  "asset" => array(...)
+     * )
+     * @param $document
+     * @param $rewriteConfig
+     * @return Document
+     */
+    public static function rewriteIds($document, $rewriteConfig, $params = array()) {
+
+        // rewriting elements only for snippets and pages
+        if($document instanceof Document_PageSnippet) {
+            if(array_key_exists("enableInheritance", $params) && $params["enableInheritance"]) {
+                $elements = $document->getElements();
+                $changedElements = array();
+                $contentMaster = $document->getContentMasterDocument();
+                if($contentMaster instanceof Document_PageSnippet) {
+                    $contentMasterElements = $contentMaster->getElements();
+                    foreach ($contentMasterElements as $contentMasterElement) {
+                        if(method_exists($contentMasterElement, "rewriteIds")) {
+                            $element = clone $contentMasterElement;
+                            $element->rewriteIds($rewriteConfig);
+
+                            if(Pimcore_Tool_Serialize::serialize($element) != Pimcore_Tool_Serialize::serialize($contentMasterElement)) {
+                                $changedElements[] = $element;
+                            }
+                        }
+                    }
+                }
+
+                if(count($changedElements) > 0) {
+                    $elements = $changedElements;
+                }
+            } else {
+                $elements = $document->getElements();
+                foreach ($elements as &$element) {
+                    if(method_exists($element, "rewriteIds")) {
+                        $element->rewriteIds($rewriteConfig);
+                    }
+                }
+            }
+
+            $document->setElements($elements);
+        } else if ($document instanceof Document_Hardlink) {
+            if(array_key_exists("document", $rewriteConfig) && $document->getSourceId() && array_key_exists((int) $document->getSourceId(), $rewriteConfig["document"])) {
+                $document->setSourceId($rewriteConfig["document"][(int) $document->getSourceId()]);
+            }
+        } else if ($document instanceof Document_Link) {
+            if(array_key_exists("document", $rewriteConfig) && $document->getLinktype() == "internal" && $document->getInternalType() == "document" && array_key_exists((int) $document->getInternal(), $rewriteConfig["document"])) {
+                $document->setInternal($rewriteConfig["document"][(int) $document->getInternal()]);
+            }
+        }
+
+        // rewriting properties
+        $properties = $document->getProperties();
+        foreach ($properties as &$property) {
+            $property->rewriteIds($rewriteConfig);
+        }
+        $document->setProperties($properties);
+
+        return $document;
     }
 
 }

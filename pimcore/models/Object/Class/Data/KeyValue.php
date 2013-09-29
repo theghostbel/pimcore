@@ -11,7 +11,7 @@
  *
  * @category   Pimcore
  * @package    Object_Class
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -114,8 +114,7 @@ class Object_Class_Data_KeyValue extends Object_Class_Data {
 
     public function save($object, $params = array())
     {
-        Logger::debug("save called");
-        $pairs = $object->{  "get" . ucfirst($this->getName()) }();
+        $pairs = $this->getDataFromObjectParam($object);
 
         if ($pairs instanceof Object_Data_KeyValue) {
             $pairs->setClass($object->getClass());
@@ -224,7 +223,7 @@ class Object_Class_Data_KeyValue extends Object_Class_Data {
 
     public function delete($object)
     {
-        $pairs = $object->{ "get" . ucfirst($this->getName()) }();
+        $pairs = $this->getDataFromObjectParam($object);
 
         if ($pairs instanceof Object_Data_KeyValue) {
             $pairs->setClass($object->getClass());
@@ -392,9 +391,7 @@ class Object_Class_Data_KeyValue extends Object_Class_Data {
      */
     public function getForWebserviceExport($object)
     {
-        $key = $this->getName();
-        $getter = "get" . ucfirst($key);
-        $data = $object->$getter();
+        $data = $this->getDataFromObjectParam($object);
         if ($data) {
             $result = array();
             foreach ($data->arr as $item) {

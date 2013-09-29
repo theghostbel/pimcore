@@ -11,7 +11,7 @@
  *
  * @category   Pimcore
  * @package    Object_Class
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -181,9 +181,8 @@ class Object_Class_Data_Numeric extends Object_Class_Data {
      * @return string
      */
     public function getForCsvExport($object) {
-        $key = $this->getName();
-        $getter = "get".ucfirst($key);
-        return strval($object->$getter());
+        $data = $this->getDataFromObjectParam($object);
+        return strval($data);
     }
 
 
@@ -202,6 +201,43 @@ class Object_Class_Data_Numeric extends Object_Class_Data {
      */
     public function isDiffChangeAllowed() {
         return true;
+    }
+
+
+    /**
+     * Creates getter code which is used for generation of php file for object classes using this data type
+     * @param $class
+     * @return string
+     */
+    public function getGetterCode($class)
+    {
+        $key = $this->getName();
+        $code = "";
+
+        $code .= '/**' . "\n";
+        $code .= '* @return ' . $this->getPhpdocType() . "\n";
+        $code .= '*/' . "\n";
+        $code .= "public function get" . ucfirst($key) . " () {\n";
+
+        // adds a hook preGetValue which can be defined in an extended class
+        $code .= "\t" . '$preValue = $this->preGetValue("' . $key . '");' . " \n";
+        $code .= "\t" . 'if($preValue !== null && !Pimcore::inAdmin()) { return $preValue;}' . "\n";
+
+        if (method_exists($this, "preGetData")) {
+            $code .= "\t" . '$data = $this->getClass()->getFieldDefinition("' . $key . '")->preGetData($this);' . "\n";
+        } else {
+            $code .= "\t" . '$data = $this->' . $key . ";\n";
+        }
+
+        // insert this line if inheritance from parent objects is allowed
+        if ($class->getAllowInherit()) {
+            $code .= "\t" . 'if($data === null && Object_Abstract::doGetInheritedValues()) { return $this->getValueFromParent("' . $key . '");}' . "\n";
+        }
+
+        $code .= "\t return " . '$data' . ";\n";
+        $code .= "}\n\n";
+
+        return $code;
     }
 
 }

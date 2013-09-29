@@ -9,7 +9,7 @@
  * It is also available through the world-wide-web at this URL:
  * http://www.pimcore.org/license
  *
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -47,7 +47,8 @@ class Extensionmanager_AdminController extends Pimcore_Controller_Action_Admin {
                     "installed" => $isEnabled ? $className::isInstalled() : null,
                     "active" => $isEnabled,
                     "configuration" => $config["plugin"]["pluginIframeSrc"],
-                    "updateable" => $updateable
+                    "updateable" => $updateable,
+                    "version" => $config["plugin"]["pluginVersion"]  // NEU http://www.pimcore.org/issues/browse/PIMCORE-1947
                 );
 
                 if($config["plugin"]["pluginXmlEditorFile"] && is_readable(PIMCORE_DOCUMENT_ROOT . $config["plugin"]["pluginXmlEditorFile"])){

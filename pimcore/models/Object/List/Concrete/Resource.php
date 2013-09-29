@@ -11,7 +11,7 @@
  *
  * @category   Pimcore
  * @package    Object
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -180,9 +180,12 @@ class Object_List_Concrete_Resource extends Object_List_Resource {
                     $name .= "~" . $fc['fieldname'];
                 }
 
-
-                $join .= " `" . $name . "`";
-                $join .= " ON `" . $name . "`.o_id = `" . $this->getTableName() . "`.o_id";
+                $join .= " " . $this->db->quoteIdentifier($name);
+                $join .= " ON (" . $this->db->quoteIdentifier($name) . ".o_id = " . $this->db->quoteIdentifier($this->getTableName()) . ".o_id";
+                if(!empty($fc['fieldname'])) {
+                    $join .= " AND " . $this->db->quoteIdentifier($name) . ".fieldname = '" . $fc['fieldname'] . "'";
+                }
+                $join .= ")";
             }
         }
 
@@ -208,31 +211,5 @@ class Object_List_Concrete_Resource extends Object_List_Resource {
             $selectPart = "DISTINCT " . $column;
         }
         return $selectPart;
-    }
-
-    /**
-     * @return string
-     */
-    protected function getCondition() {
-        $condition = parent::getCondition();
-
-        $fieldCollections = $this->model->getFieldCollections();
-        if(!empty($fieldCollections)) {
-            foreach($fieldCollections as $fc) {
-                if(!empty($fc['fieldname'])) {
-                    $name = $fc['type'];
-                    if(!empty($fc['fieldname'])) {
-                        $name .= "~" . $fc['fieldname'];
-                    }
-
-                    if(!empty($condition)) {
-                        $condition .= " AND ";
-                    }
-                    $condition .= "`" . $name . "`.fieldname = '" . $fc['fieldname'] . "'";
-                }
-            }
-
-        }
-        return $condition;
     }
 }

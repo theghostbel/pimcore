@@ -8,7 +8,7 @@
  * It is also available through the world-wide-web at this URL:
  * http://www.pimcore.org/license
  *
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -200,12 +200,13 @@ pimcore.document.pages.preview = Class.create({
             if(!pimcore.globalmanager.get("user").isAllowed("document_style_editor")) {
                 cssPanelEnabled = false;
             }
-            if(!(this.page.isAllowed("save") || this.isAllowed("publish"))) {
+            if(!(this.page.isAllowed("save") || this.page.isAllowed("publish"))) {
                 cssPanelEnabled = false;
             }
             if(Ext.isIE8) {
                 cssPanelEnabled = false;
             }
+            this.cssPanelEnabled = cssPanelEnabled;
 
 
             this.cssPanel = new Ext.Panel({
@@ -1145,6 +1146,10 @@ pimcore.document.pages.preview = Class.create({
     },
 
     editorClearCurrentElement: function () {
+        if(!this.cssPanelEnabled) {
+            return;
+        }
+
         this.editorElement = null;
         if(this.editorUpdateInterval) {
             clearInterval(this.editorUpdateInterval);

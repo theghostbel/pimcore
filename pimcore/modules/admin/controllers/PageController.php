@@ -9,7 +9,7 @@
  * It is also available through the world-wide-web at this URL:
  * http://www.pimcore.org/license
  *
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -65,11 +65,6 @@ class Admin_PageController extends Pimcore_Controller_Action_Admin_Document {
             
             $page = $this->getLatestVersion($page);
             $page->setUserModification($this->getUser()->getId());
-
-            // save to session
-            $key = "document_" . $this->getParam("id");
-            $session = new Zend_Session_Namespace("pimcore_documents");
-            $session->$key = $page;
 
             if ($this->getParam("task") == "unpublish") {
                 $page->setPublished(false);
@@ -141,6 +136,7 @@ class Admin_PageController extends Pimcore_Controller_Action_Admin_Document {
 
                 try{
                     $page->save();
+                    $this->saveToSession($page);
                     $this->_helper->json(array("success" => true));
                 } catch (Exception $e) {
                     Logger::err($e);
@@ -151,10 +147,10 @@ class Admin_PageController extends Pimcore_Controller_Action_Admin_Document {
             else {
                 if ($page->isAllowed("save")) {
                     $this->setValuesToDocument($page);
-                    
 
                     try{
-                    $page->saveVersion();
+                        $page->saveVersion();
+                        $this->saveToSession($page);
                         $this->_helper->json(array("success" => true));
                     } catch (Exception $e) {
                         Logger::err($e);

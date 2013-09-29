@@ -8,7 +8,7 @@
  * It is also available through the world-wide-web at this URL:
  * http://www.pimcore.org/license
  *
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -23,9 +23,7 @@ pimcore.document.tags.wysiwyg = Class.create(pimcore.document.tag, {
         this.id = id;
         this.name = name;
         this.setupWrapper();
-        if (!options) {
-            options = {};
-        }
+        options = this.parseOptions(options);
 
         this.initialOptions = Object.clone(options);
 
@@ -200,7 +198,13 @@ pimcore.document.tags.wysiwyg = Class.create(pimcore.document.tag, {
                 }
                 this.ckeditor = CKEDITOR.replace(this.textarea, eConfig);
             } else {
-                eConfig.extraPlugins = "sourcedialog";
+                if(!this.options['extraPlugins'] || this.options['extraPlugins']== ''){
+                    eConfig.extraPlugins = "sourcedialog";
+                }else{
+                    if(this.options['extraPlugins'].indexOf("sourcedialog") == -1){
+                        eConfig.extraPlugins += ",sourcedialog";
+                    }
+                }
                 this.ckeditor = CKEDITOR.inline(this.textarea, eConfig);
 
                 this.ckeditor.on('focus', function () {

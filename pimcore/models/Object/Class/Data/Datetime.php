@@ -11,7 +11,7 @@
  *
  * @category   Pimcore
  * @package    Object_Class
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -154,10 +154,9 @@ class Object_Class_Data_Datetime extends Object_Class_Data
      */
     public function getForCsvExport($object)
     {
-        $key = $this->getName();
-        $getter = "get" . ucfirst($key);
-        if ($object->$getter() instanceof Zend_Date) {
-            return $object->$getter()->toString();
+        $data = $this->getDataFromObjectParam($object);
+        if ($data instanceof Zend_Date) {
+            return $data->toString();
         } else return null;
     }
 
@@ -186,10 +185,9 @@ class Object_Class_Data_Datetime extends Object_Class_Data
      */
     public function getForWebserviceExport($object)
     {
-        $key = $this->getName();
-        $getter = "get" . ucfirst($key);
-        if ($object->$getter() instanceof Zend_Date) {
-            return $object->$getter()->toString();
+        $data = $this->getDataFromObjectParam($object);
+        if ($data instanceof Zend_Date) {
+            return $data->toString();
         } else return null;
     }
 

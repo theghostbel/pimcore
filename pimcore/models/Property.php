@@ -11,7 +11,7 @@
  *
  * @category   Pimcore
  * @package    Property
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -324,5 +324,29 @@ class Property extends Pimcore_Model_Abstract {
         }
         
         return $dependencies;
+    }
+
+    /**
+     * Rewrites id from source to target, $idMapping contains
+     * array(
+     *  "document" => array(
+     *      SOURCE_ID => TARGET_ID,
+     *      SOURCE_ID => TARGET_ID
+     *  ),
+     *  "object" => array(...),
+     *  "asset" => array(...)
+     * )
+     * @param array $idMapping
+     */
+    public function rewriteIds($idMapping) {
+        if(!$this->isInherited()) {
+            if(array_key_exists($this->getType(), $idMapping)) {
+                if($this->getData() instanceof Element_Interface) {
+                    if(array_key_exists((int) $this->getData()->getId(), $idMapping[$this->getType()])) {
+                        $this->setData(Element_Service::getElementById($this->getType(), $idMapping[$this->getType()][$this->getData()->getId()]));
+                    }
+                }
+            }
+        }
     }
 }

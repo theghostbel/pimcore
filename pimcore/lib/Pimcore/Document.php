@@ -9,7 +9,7 @@
  * It is also available through the world-wide-web at this URL:
  * http://www.pimcore.org/license
  *
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
  
@@ -17,7 +17,7 @@ class Pimcore_Document {
 
     /**
      * @param null $adapter
-     * @return null|Pimcore_Document_Adapter_Imagick
+     * @return null|Pimcore_Document_Adapter
      * @throws Exception
      */
     public static function getInstance ($adapter = null) {
@@ -53,11 +53,24 @@ class Pimcore_Document {
     }
 
     /**
+     * @param $filetype
+     * @return bool
+     */
+    public static function isFileTypeSupported($filetype) {
+        if(self::getDefaultAdapter()) {
+            if($adapter = self::getDefaultAdapter()) {
+                return $adapter->isFileTypeSupported($filetype);
+            }
+        }
+        return false;
+    }
+
+    /**
      * @return bool
      */
     public static function getDefaultAdapter () {
 
-        $adapters = array("Ghostscript", "Imagick");
+        $adapters = array("LibreOffice", "Ghostscript");
 
         foreach ($adapters as $adapter) {
             $adapterClass = "Pimcore_Document_Adapter_" . $adapter;

@@ -9,7 +9,7 @@
  * It is also available through the world-wide-web at this URL:
  * http://www.pimcore.org/license
  *
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -45,6 +45,8 @@ class Pimcore_Controller_Plugin_Frontend_Editmode extends Zend_Controller_Plugin
         
         $editmodeScripts = array(
             "/pimcore/static/js/pimcore/functions.js",
+            "/pimcore/static/js/pimcore/element/tag/imagehotspotmarkereditor.js",
+            "/pimcore/static/js/pimcore/element/tag/imagecropper.js",
             "/pimcore/static/js/pimcore/document/edit/helper.js",
             "/pimcore/static/js/pimcore/document/edit/dnd.js",
             "/pimcore/static/js/pimcore/document/tag.js",

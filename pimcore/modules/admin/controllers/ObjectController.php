@@ -9,7 +9,7 @@
  * It is also available through the world-wide-web at this URL:
  * http://www.pimcore.org/license
  *
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -318,7 +318,7 @@ class Admin_ObjectController extends Pimcore_Controller_Action_Admin
             $objectData["metaData"] = $this->metaData;
 
             $objectData["general"] = array();
-            $allowedKeys = array("o_published", "o_key", "o_id", "o_modificationDate", "o_classId", "o_className", "o_locked", "o_type", "o_parentId");
+            $allowedKeys = array("o_published", "o_key", "o_id", "o_modificationDate", "o_creationDate", "o_classId", "o_className", "o_locked", "o_type", "o_parentId", "o_userOwner", "o_userModification");
 
             foreach (get_object_vars($object) as $key => $value) {
                 if (strstr($key, "o_") && in_array($key, $allowedKeys)) {
@@ -334,6 +334,7 @@ class Admin_ObjectController extends Pimcore_Controller_Action_Admin
             $objectData["scheduledTasks"] = $object->getScheduledTasks();
             $objectData["general"]["allowVariants"] = $object->getClass()->getAllowVariants();
             $objectData["general"]["showVariants"] = $object->getClass()->getShowVariants();
+            $objectData["general"]["fullpath"] = $object->getFullPath();
 
             if($object->getElementAdminStyle()->getElementIcon()) {
                 $objectData["general"]["icon"] = $object->getO_elementAdminStyle()->getElementIcon();
@@ -395,7 +396,9 @@ class Admin_ObjectController extends Pimcore_Controller_Action_Admin
             if ($fielddefinition->isRemoteOwner()) {
                 $refKey = $fielddefinition->getOwnerFieldName();
                 $refClass = Object_Class::getByName($fielddefinition->getOwnerClassName());
-                $refId = $refClass->getId();
+                if($refClass) {
+                    $refId = $refClass->getId();
+                }
             } else {
                 $refKey = $key;
             }
@@ -429,7 +432,9 @@ class Admin_ObjectController extends Pimcore_Controller_Action_Admin
                 // make sure that the localized field participates in the inheritance detection process
                 $isInheritedValue = $value["inherited"];
             }
-            if(empty($value) && !empty($parent)) {
+            if(((!$fielddefinition instanceof Object_Class_Data_Numeric && empty($value)) ||
+                ($fielddefinition instanceof Object_Class_Data_Numeric && $value === null))
+                && !empty($parent)) {
                 $this->getDataForField($parent, $key, $fielddefinition, $objectFromVersion, $level + 1);
             } else {
                 $isInheritedValue = $isInheritedValue || ($level != 0);
@@ -510,7 +515,7 @@ class Admin_ObjectController extends Pimcore_Controller_Action_Admin
             $objectData["general"] = array();
             $objectData["idPath"] = Element_Service::getIdPath($object);
 
-            $allowedKeys = array("o_published", "o_key", "o_id", "o_type");
+            $allowedKeys = array("o_published", "o_key", "o_id", "o_type","o_path");
             foreach (get_object_vars($object) as $key => $value) {
                 if (strstr($key, "o_") && in_array($key, $allowedKeys)) {
                     $objectData["general"][$key] = $value;
@@ -759,6 +764,16 @@ class Admin_ObjectController extends Pimcore_Controller_Action_Admin
             $object->setOmitMandatoryCheck(true);
         }
 
+        // this prevents the user from renaming, relocating (actions in the tree) if the newest version isn't the published one
+        // the reason is that otherwise the content of the newer not published version will be overwritten
+        if($object instanceof Object_Concrete) {
+            $latestVersion = $object->getLatestVersion();
+            if($latestVersion && $latestVersion->getData()->getModificationDate() != $object->getModificationDate()) {
+                $this->_helper->json(array("success" => false, "message" => "You can't relocate if there's a newer not published version"));
+            }
+        }
+
+
         $values = Zend_Json::decode($this->getParam("values"));
 
         if ($object->isAllowed("settings")) {
@@ -870,7 +885,7 @@ class Admin_ObjectController extends Pimcore_Controller_Action_Admin
             // do not allow all values to be set, will cause problems (eg. icon)
             if (is_array($general) && count($general) > 0) {
                 foreach ($general as $key => $value) {
-                    if(!in_array($key, array("o_id", "o_classId", "o_className", "o_type", "icon"))) {
+                    if(!in_array($key, array("o_id", "o_classId", "o_className", "o_type", "icon", "o_userOwner", "o_userModification"))) {
                         $object->setValue($key,$value);
                     }
                 }
@@ -922,10 +937,13 @@ class Admin_ObjectController extends Pimcore_Controller_Action_Admin
 
         }
         else if ($this->getParam("task") == "session") {
-            $key = "object_" . $object->getId();
-            $session = new Zend_Session_Namespace("pimcore_objects");
+
             //$object->_fulldump = true; // not working yet, donno why
-            $session->$key = $object;
+
+            Pimcore_Tool_Session::useSession(function ($session) use ($object) {
+                $key = "object_" . $object->getId();
+                $session->$key = $object;
+            }, "pimcore_objects");
 
             $this->_helper->json(array("success" => true));
         }
@@ -1285,10 +1303,12 @@ class Admin_ObjectController extends Pimcore_Controller_Action_Admin
 
         $transactionId = time();
         $pasteJobs = array();
-        $session = new Zend_Session_Namespace("pimcore_copy");
-        $session->$transactionId = array();
 
-        if ($this->getParam("type") == "recursive") {
+        Pimcore_Tool_Session::useSession(function ($session) use ($transactionId) {
+            $session->$transactionId = array("idMapping" => array());
+        }, "pimcore_copy");
+
+        if ($this->getParam("type") == "recursive" || $this->getParam("type") == "recursive-update-references") {
 
             $object = Object_Abstract::getById($this->getParam("sourceId"));
 
@@ -1328,6 +1348,19 @@ class Admin_ObjectController extends Pimcore_Controller_Action_Admin
                     }
                 }
             }
+
+            // add id-rewrite steps
+            if($this->getParam("type") == "recursive-update-references") {
+                for($i=0; $i<(count($childIds)+1); $i++) {
+                    $pasteJobs[] = array(array(
+                        "url" => "/admin/object/copy-rewrite-ids",
+                        "params" => array(
+                            "transactionId" => $transactionId,
+                            "_dc" => uniqid()
+                        )
+                    ));
+                }
+            }
         }
         else if ($this->getParam("type") == "child" || $this->getParam("type") == "replace") {
             // the object itself is the last one
@@ -1348,6 +1381,40 @@ class Admin_ObjectController extends Pimcore_Controller_Action_Admin
         ));
     }
 
+    public function copyRewriteIdsAction () {
+
+        $transactionId = $this->getParam("transactionId");
+
+        $idStore = Pimcore_Tool_Session::useSession(function ($session) use ($transactionId) {
+            return $session->$transactionId;
+        }, "pimcore_copy");
+
+        if(!array_key_exists("rewrite-stack",$idStore)) {
+            $idStore["rewrite-stack"] = array_values($idStore["idMapping"]);
+        }
+
+        $id = array_shift($idStore["rewrite-stack"]);
+        $object = Object_Abstract::getById($id);
+
+        // create rewriteIds() config parameter
+        $rewriteConfig = array("object" => $idStore["idMapping"]);
+
+        $object = Object_Service::rewriteIds($object, $rewriteConfig);
+
+        $object->setUserModification($this->getUser()->getId());
+        $object->save();
+
+
+        // write the store back to the session
+        Pimcore_Tool_Session::useSession(function ($session) use ($transactionId, $idStore) {
+            $session->$transactionId = $idStore;
+        }, "pimcore_copy");
+
+        $this->_helper->json(array(
+            "success" => true,
+            "id" => $id
+        ));
+    }
 
     public function copyAction()
     {
@@ -1355,7 +1422,7 @@ class Admin_ObjectController extends Pimcore_Controller_Action_Admin
         $message = "";
         $sourceId = intval($this->getParam("sourceId"));
         $source = Object_Abstract::getById($sourceId);
-        $session = new Zend_Session_Namespace("pimcore_copy");
+        $session = Pimcore_Tool_Session::get("pimcore_copy");
 
         $targetId = intval($this->getParam("targetId"));
         if($this->getParam("targetParentId")) {
@@ -1381,9 +1448,12 @@ class Admin_ObjectController extends Pimcore_Controller_Action_Admin
                     if ($this->getParam("type") == "child") {
                         $newObject = $this->_objectService->copyAsChild($target, $source);
 
+                        $session->{$this->getParam("transactionId")}["idMapping"][(int) $source->getId()] = (int) $newObject->getId();
+
                         // this is because the key can get the prefix "_copy" if the target does already exists
                         if($this->getParam("saveParentId")) {
                             $session->{$this->getParam("transactionId")}["parentId"] = $newObject->getId();
+                            Pimcore_Tool_Session::writeClose();
                         }
                     }
                     else if ($this->getParam("type") == "replace") {
@@ -1415,7 +1485,8 @@ class Admin_ObjectController extends Pimcore_Controller_Action_Admin
 
         $id = $this->getParam("id");
         $key = "object_" . $id;
-        $session = new Zend_Session_Namespace("pimcore_objects");
+
+        $session = Pimcore_Tool_Session::getReadOnly("pimcore_objects");
         if($session->$key) {
             $object = $session->$key;
         } else {

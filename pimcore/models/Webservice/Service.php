@@ -11,7 +11,7 @@
  *
  * @category   Pimcore
  * @package    Webservice
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -1081,4 +1081,6 @@ class Webservice_Service
             throw new Exception("Parameter 'type' has to be 'website' or 'admin'");
         }
     }
+
+
 }

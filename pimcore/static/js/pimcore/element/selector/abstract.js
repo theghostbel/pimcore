@@ -8,7 +8,7 @@
  * It is also available through the world-wide-web at this URL:
  * http://www.pimcore.org/license
  *
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -57,7 +57,7 @@ pimcore.element.selector.abstract = Class.create({
         
         if(existingItem < 0) {
             var r = new this.selectionStore.recordType(data); 
-            this.selectionStore.insert(0, r);
+            this.selectionStore.add(r);
         }
     },
     

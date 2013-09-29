@@ -11,7 +11,7 @@
  *
  * @category   Pimcore
  * @package    Asset
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
  
@@ -134,7 +134,7 @@ class Asset_Image_Thumbnail_Processor {
         // so that it can be used also with dynamic configurations
         if($deferred) {
             $configPath = PIMCORE_SYSTEM_TEMP_DIRECTORY . "/" . $filename . ".deferred.config";
-            file_put_contents($configPath, serialize($config));
+            file_put_contents($configPath, Pimcore_Tool_Serialize::serialize($config));
 
             return $path;
         }

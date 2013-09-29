@@ -11,7 +11,7 @@
  *
  * @category   Pimcore
  * @package    Object_Class
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -95,8 +95,12 @@ class Object_Class_Data_Nonownerobjects extends Object_Class_Data_Objects {
     {
         //fallback for legacy data
         if(empty($this->ownerClassName)){
-            $class = Object_Class::getById($this->ownerClassId);
-            $this->ownerClassName =  $class->getName();
+            try {
+                $class = Object_Class::getById($this->ownerClassId);
+                $this->ownerClassName =  $class->getName();
+            } catch (\Exception $e) {
+                Logger::error($e->getMessage());
+            }
         }
         return $this->ownerClassName;
     }

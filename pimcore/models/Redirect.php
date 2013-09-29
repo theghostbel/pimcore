@@ -11,7 +11,7 @@
  *
  * @category   Pimcore
  * @package    Redirect
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -208,7 +208,7 @@ class Redirect extends Pimcore_Model_Abstract {
             Pimcore_Model_Cache::clearTag("redirect");
         }
         catch (Exception $e) {
-            Logger::info($e);
+            Logger::crit($e);
         }
     }
 

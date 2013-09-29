@@ -8,7 +8,7 @@
  * It is also available through the world-wide-web at this URL:
  * http://www.pimcore.org/license
  *
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -478,6 +478,11 @@ pimcore.object.tree = Class.create({
                         text: t("paste_recursive_as_childs"),
                         iconCls: "pimcore_icon_paste",
                         handler: this.attributes.reference.pasteInfo.bind(this, "recursive")
+                    });
+                    pasteMenu.push({
+                        text: t("paste_recursive_updating_references"),
+                        iconCls: "pimcore_icon_paste",
+                        handler: this.attributes.reference.pasteInfo.bind(this, "recursive-update-references")
                     });
                     pasteMenu.push({
                         text: t("paste_as_child"),

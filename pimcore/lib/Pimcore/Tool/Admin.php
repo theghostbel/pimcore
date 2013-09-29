@@ -9,7 +9,7 @@
  * It is also available through the world-wide-web at this URL:
  * http://www.pimcore.org/license
  *
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -71,7 +71,8 @@ class Pimcore_Tool_Admin {
         $scriptPath = PIMCORE_TEMPORARY_DIRECTORY."/minified_javascript_core_".md5($scriptContent).".js";
 
         if(!is_file($scriptPath)) {
-            $scriptContent = JSMin::minify($scriptContent);
+            //$scriptContent = JSMin::minify($scriptContent); // temp. disabled until we have a better library - just combine for now
+
             file_put_contents($scriptPath, $scriptContent);
             chmod($scriptPath, 0766);
         }
@@ -83,7 +84,7 @@ class Pimcore_Tool_Admin {
         $stylesheetPath = PIMCORE_TEMPORARY_DIRECTORY."/minified_css_core_".md5($stylesheetContent).".css";
 
         if(!is_file($stylesheetPath)) {
-            $stylesheetContent = Minify_CSS::minify($stylesheetContent);
+            //$stylesheetContent = Minify_CSS::minify($stylesheetContent); // temp. disabled until we have a better library - just combine for now
 
             // put minified contents into one single file
             file_put_contents($stylesheetPath, $stylesheetContent);
@@ -115,6 +116,11 @@ class Pimcore_Tool_Admin {
         } catch (Exception $e) {
             // use default settings
             $dialect = new Csv_Dialect();
+        }
+
+        // validity check
+        if(!in_array($dialect->delimiter, array(";",",","\t","|",":"))) {
+            $dialect->delimiter = ";";
         }
 
         return $dialect;

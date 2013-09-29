@@ -8,7 +8,7 @@
  * It is also available through the world-wide-web at this URL:
  * http://www.pimcore.org/license
  *
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -251,11 +251,12 @@ pimcore.settings.translation.xliff = Class.create({
         }
 
         Ext.Ajax.request({
-            url: "/admin/misc/xliff-export-jobs",
+            url: "/admin/translation/content-export-jobs",
             params: {
                 source: this.exportSourceLanguageSelector.getValue(),
                 target: this.exportTargetLanguageSelector.getValue(),
-                data: Ext.encode(tmData)
+                data: Ext.encode(tmData),
+                type: "xliff"
             },
             success: function(response) {
                 var res = Ext.decode(response.responseText);
@@ -287,7 +288,7 @@ pimcore.settings.translation.xliff = Class.create({
                         this.exportProgressbar = null;
                         this.exportProgressWin = null;
 
-                        pimcore.helpers.download('/admin/misc/xliff-export-download/?id='+ id);
+                        pimcore.helpers.download('/admin/translation/xliff-export-download/?id='+ id);
                     }.bind(this, res.id),
                     update: function (currentStep, steps, percent) {
                         if(this.exportProgressbar) {
@@ -316,7 +317,7 @@ pimcore.settings.translation.xliff = Class.create({
                 text: t("select_a_file") + " (.xlf / .xliff)",
                 iconCls: "pimcore_icon_newfile",
                 handler: function () {
-                    pimcore.helpers.uploadDialog('/admin/misc/xliff-import-upload', "file", function(res) {
+                    pimcore.helpers.uploadDialog('/admin/translation/xliff-import-upload', "file", function(res) {
 
                         var res = Ext.decode(res["response"]["responseText"]);
 

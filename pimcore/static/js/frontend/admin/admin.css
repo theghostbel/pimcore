@@ -11,10 +11,17 @@
     background: url(/pimcore/static/img/background.png);
     overflow: hidden;
     color: #fff;
+    z-index: 10000;
+}
+
+/* bootstrap 3 fixes */
+#pimcore_admin_console * {
+    -webkit-box-sizing: content-box;
+    -moz-box-sizing: content-box;
+    box-sizing: content-box;
 }
 
 #pimcore_admin_console.open {
-    height: 145px;
     width: 200px;
 }
 
@@ -41,6 +48,7 @@
     padding: 0 0 0 25px;
     margin-bottom: 5px;
     cursor: pointer;
+    line-height: 20px;
 }
 
 #pimcore_admin_console .edit {
@@ -57,6 +65,10 @@
 
 #pimcore_admin_console .promote {
     background: url(/pimcore/static/img/icon/comments.png) no-repeat 2px 2px;
+}
+
+#pimcore_admin_console .persona {
+    background: url(/pimcore/static/img/icon/group.png) no-repeat 2px 2px;
 }
 
 #pimcore_admin_lightbox {

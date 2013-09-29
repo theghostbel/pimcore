@@ -11,7 +11,7 @@
  *
  * @category   Pimcore
  * @package    Document
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -56,7 +56,7 @@ class Document_Page_Resource extends Document_PageSnippet_Resource {
                     WHERE documents.id = ?", $this->model->getId());
 
             if ($data["id"] > 0) {
-                $data["metaData"] = @unserialize($data["metaData"]);
+                $data["metaData"] = Pimcore_Tool_Serialize::unserialize($data["metaData"]);
                 $this->assignVariablesToModel($data);
             }
             else {
@@ -116,7 +116,7 @@ class Document_Page_Resource extends Document_PageSnippet_Resource {
                     $value = (int)$value;
                 }
                 if(is_array($value)) {
-                    $value = serialize($value);
+                    $value = Pimcore_Tool_Serialize::serialize($value);
                 }
 
                 if (in_array($key, $this->validColumnsDocument)) {

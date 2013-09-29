@@ -9,7 +9,7 @@
  * It is also available through the world-wide-web at this URL:
  * http://www.pimcore.org/license dsf sdaf asdf asdf
  *
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -23,7 +23,7 @@ class Admin_BackupController extends Pimcore_Controller_Action_Admin {
 
         @ini_set("memory_limit", "-1");
 
-        $this->session = new Zend_Session_Namespace("pimcore_backup");
+        $this->session = Pimcore_Tool_Session::get("pimcore_backup");
     }
 
     public function initAction() {

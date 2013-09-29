@@ -9,7 +9,7 @@
  * It is also available through the world-wide-web at this URL:
  * http://www.pimcore.org/license dsf sdaf asdf asdf
  *
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -54,6 +54,8 @@ class Admin_AdminButtonController extends Pimcore_Controller_Action_Admin {
             $subject .=  $urlParts["host"];
 
             $mail = Pimcore_Tool::getMail($email, $subject, "UTF-8");
+            $mail->setIgnoreDebugMode(true);
+
             $bodyText = "URL: " . $this->getParam("url") . "\n\n";
             $bodyText .= "Description: \n\n" . $this->getParam("description");
 
@@ -140,6 +142,7 @@ class Admin_AdminButtonController extends Pimcore_Controller_Action_Admin {
             $subject .=  $urlParts["host"];
 
             $mail = Pimcore_Tool::getMail($email, $subject, "UTF-8");
+            $mail->setIgnoreDebugMode(true);
 
             $bodyText = "Host: " . $urlParts["host"] . "\n\n";
             $bodyText .= "URL: " . $this->getParam("url") . "\n\n";
@@ -151,5 +154,11 @@ class Admin_AdminButtonController extends Pimcore_Controller_Action_Admin {
             $mail->setBodyText($bodyText);
             $mail->send();
         }
+    }
+
+    public function personaAction() {
+
+        $list = new Tool_Targeting_Persona_List();
+        $this->view->personas = $list->load();
     }
 }

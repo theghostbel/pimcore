@@ -9,7 +9,7 @@
  * It is also available through the world-wide-web at this URL:
  * http://www.pimcore.org/license
  *
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -158,9 +158,9 @@ class Install_CheckController extends Pimcore_Controller_Action {
 
         // APC
         $checksPHP[] = array(
-            "name" => "APC",
-            "link" => "http://www.php.net/apc",
-            "state" => function_exists("apc_add") ? "ok" : "warning"
+            "name" => "APC / opcache",
+            "link" => "http://www.php.net/opcache",
+            "state" => (function_exists("apc_add") || function_exists("opcache_reset")) ? "ok" : "warning"
         );
 
         // memcache
@@ -294,7 +294,7 @@ class Install_CheckController extends Pimcore_Controller_Action {
                   CHANGE COLUMN id id int(11) NOT NULL,
                   CHANGE COLUMN field field varchar(255) NULL DEFAULT NULL,
                   CHANGE COLUMN alter_field alter_field varchar(255) NULL DEFAULT NULL,
-                  ADD INDEX field (field(255)),
+                  ADD KEY field (field),
                   DROP PRIMARY KEY ,
                  DEFAULT CHARSET=utf8");
 
@@ -545,6 +545,29 @@ class Install_CheckController extends Pimcore_Controller_Action {
             "state" => $html2textBin ? "ok" : "warning"
         );
 
+        // ghostscript BIN
+        try {
+            $ghostscriptBin = (bool) Pimcore_Document_Adapter_Ghostscript::getGhostscriptCli();
+        } catch (Exception $e) {
+            $ghostscriptBin = false;
+        }
+
+        $checksApps[] = array(
+            "name" => "Ghostscript (CLI)",
+            "state" => $ghostscriptBin ? "ok" : "warning"
+        );
+
+        // LibreOffice BIN
+        try {
+            $libreofficeBin = (bool) Pimcore_Document_Adapter_LibreOffice::getLibreOfficeCli();
+        } catch (Exception $e) {
+            $libreofficeBin = false;
+        }
+
+        $checksApps[] = array(
+            "name" => "LibreOffice (CLI)",
+            "state" => $libreofficeBin ? "ok" : "warning"
+        );
 
 
         $this->view->checksApps = $checksApps;

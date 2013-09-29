@@ -1,3 +1,16 @@
+/**
+ * Pimcore
+ *
+ * LICENSE
+ *
+ * This source file is subject to the new BSD license that is bundled
+ * with this package in the file LICENSE.txt.
+ * It is also available through the world-wide-web at this URL:
+ * http://www.pimcore.org/license
+ *
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license     New BSD License
+ */
 
 /* CONDITION TYPES */
 
@@ -54,6 +67,7 @@ pimcore.settings.targeting.conditions = {
                 tmpContainer.doLayout();
 
                 parent.recalculateButtonStatus();
+                parent.recalculateBracketIdent(parent.conditionsContainer.items);
 
                 pimcore.layout.refresh();
             }.bind(window, index, parent)
@@ -79,6 +93,7 @@ pimcore.settings.targeting.conditions = {
                 tmpContainer.doLayout();
 
                 parent.recalculateButtonStatus();
+                parent.recalculateBracketIdent(parent.conditionsContainer.items);
 
                 pimcore.layout.refresh();
             }.bind(window, index, parent)
@@ -105,6 +120,7 @@ pimcore.settings.targeting.conditions = {
             handler: function (index, parent) {
                 parent.conditionsContainer.remove(Ext.getCmp(index));
                 parent.recalculateButtonStatus();
+                parent.recalculateBracketIdent(parent.conditionsContainer.items);
             }.bind(window, index, parent)
         }];
     },
@@ -502,6 +518,10 @@ pimcore.settings.targeting.conditions = {
                 xtype: "hidden",
                 name: "type",
                 value: "geopoint"
+            }, {
+                xtype: "displayfield",
+                style: "margin-top:10px;",
+                html: 'This product includes GeoLite2 data created by MaxMind, available from <a href="http://www.maxmind.com" target="_blank">http://www.maxmind.com</a>.'
             }]
         });
 

@@ -8,7 +8,7 @@
  * It is also available through the world-wide-web at this URL:
  * http://www.pimcore.org/license
  *
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -18,19 +18,12 @@ pimcore.document.tags.snippet = Class.create(pimcore.document.tag, {
     initialize: function(id, name, options, data, inherited) {
         this.id = id;
         this.name = name;
-        this.options = options;
-
+        this.options = this.parseOptions(options);
         this.data = {};
 
-        if (!this.options) {
-            this.options = {};
-        }
         if (!data) {
             data = {};
         }
-
-        // cast array to object
-        this.options = Ext.apply({}, this.options);
 
         // height management                
         this.defaultHeight = 100;

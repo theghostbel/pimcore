@@ -11,11 +11,11 @@
  *
  * @category   Pimcore
  * @package    Asset
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
-class Asset extends Pimcore_Model_Abstract implements Element_Interface {
+class Asset extends Element_Abstract {
 
     public static $chmod = 0766;
 
@@ -284,9 +284,9 @@ class Asset extends Pimcore_Model_Abstract implements Element_Interface {
         // (tree) is generated immediately after creating an image
         $class = "Asset";
         if(array_key_exists("filename", $data) && array_key_exists("data", $data)) {
-            $tmpFile = PIMCORE_SYSTEM_TEMP_DIRECTORY . "/asset-create-tmp-file-" . md5($data["data"]) . ".tmp";
+            $tmpFile = PIMCORE_SYSTEM_TEMP_DIRECTORY . "/asset-create-tmp-file-" . uniqid() . "." . Pimcore_File::getFileExtension($data["filename"]);
             file_put_contents($tmpFile, $data["data"]);
-            $mimeType = MIME_Type::autoDetect($tmpFile);
+            $mimeType = Pimcore_Tool_Mime::detect($tmpFile);
             unlink($tmpFile);
             $type = self::getTypeFromMimeMapping($mimeType, $data["filename"]);
             $class = "Asset_" . ucfirst($type);
@@ -461,9 +461,10 @@ class Asset extends Pimcore_Model_Abstract implements Element_Interface {
             $this->update();
 
             // if the old path is different from the new path, update all children
+            $updatedChildren = array();
             if($oldPath && $oldPath != $this->getFullPath()) {
                 @rename(PIMCORE_ASSET_DIRECTORY . $oldPath, $this->getFileSystemPath());
-                $this->getResource()->updateChildsPaths($oldPath);
+                $updatedChildren = $this->getResource()->updateChildsPaths($oldPath);
             }
 
             $this->commit();
@@ -479,7 +480,16 @@ class Asset extends Pimcore_Model_Abstract implements Element_Interface {
             Pimcore_API_Plugin_Broker::getInstance()->postAddAsset($this);
         }
 
-        $this->clearDependentCache();
+
+        $additionalTags = array();
+        if(isset($updatedChildren) && is_array($updatedChildren)) {
+            foreach ($updatedChildren as $assetId) {
+                $additionalTags[] = "asset_" . $assetId;
+            }
+        }
+        $this->clearDependentCache($additionalTags);
+
+        return $this;
     }
 
     public function correctPath() {
@@ -532,8 +542,11 @@ class Asset extends Pimcore_Model_Abstract implements Element_Interface {
 
         // create foldertree
         $destinationPath = $this->getFileSystemPath();
-        if (!is_dir(dirname($destinationPath))) {
-            mkdir(dirname($destinationPath), self::$chmod, true);
+
+        $dirPath = dirname($destinationPath);
+        if (!is_dir($dirPath)) {
+            mkdir($dirPath, self::$chmod, true);
+            chmod($dirPath, self::$chmod);
         }
 
         if ($this->getType() != "folder") {
@@ -556,7 +569,7 @@ class Asset extends Pimcore_Model_Abstract implements Element_Interface {
 
             // set mime type
 
-            $mimetype = MIME_Type::autoDetect($this->getFileSystemPath());
+            $mimetype = Pimcore_Tool_Mime::detect($this->getFileSystemPath());
             $this->setMimetype($mimetype);
 
             // set type
@@ -777,21 +790,15 @@ class Asset extends Pimcore_Model_Abstract implements Element_Interface {
         Pimcore_API_Plugin_Broker::getInstance()->postDeleteAsset($this);
     }
 
-    public function clearDependentCache() {
+    public function clearDependentCache($additionalTags = array()) {
         try {
-            Pimcore_Model_Cache::clearTag("asset_" . $this->getId());
+            $tags = array("asset_" . $this->getId(), "properties", "output");
+            $tags = array_merge($tags, $additionalTags);
+
+            Pimcore_Model_Cache::clearTags($tags);
         }
         catch (Exception $e) {
-        }
-        try {
-            Pimcore_Model_Cache::clearTag("properties");
-        }
-        catch (Exception $e) {
-        }
-        try {
-            Pimcore_Model_Cache::clearTag("output");
-        }
-        catch (Exception $e) {
+            Logger::crit($e);
         }
     }
 
@@ -965,7 +972,36 @@ class Asset extends Pimcore_Model_Abstract implements Element_Interface {
         return $this;
     }
 
+    /**
+     * @param string $type
+     * @return null|string
+     */
+    public function getChecksum($type = "md5") {
+        $file = $this->getFileSystemPath();
+        if(is_file($file)) {
+            if($type == "md5") {
+                return md5_file($file);
+            } else if ($type = "sha1") {
+                return sha1_file($file);
+            } else {
+                throw new \Exception("hashing algorithm '" . $type . "' isn't supported");
+            }
+        }
 
+        return null;
+    }
+
+    /**
+     * @return bool
+     */
+    public function getDataChanged() {
+        return $this->_dataChanged;
+    }
+
+    /**
+     * @param bool $changed
+     * @return $this
+     */
     public function setDataChanged ($changed = true) {
         $this->_dataChanged = $changed;
         return $this;
@@ -979,10 +1015,11 @@ class Asset extends Pimcore_Model_Abstract implements Element_Interface {
         if ($this->properties === null) {
             // try to get from cache
             $cacheKey = "asset_properties_" . $this->getId();
-            ;
+            $cacheTags = $this->getCacheTags(array("properties" => "properties"));
+
             if (!$properties = Pimcore_Model_Cache::load($cacheKey)) {
                 $properties = $this->getResource()->getProperties();
-                Pimcore_Model_Cache::save($properties, $cacheKey, array("properties"));
+                Pimcore_Model_Cache::save($properties, $cacheKey, $cacheTags);
             }
 
             $this->setProperties($properties);
@@ -1348,10 +1385,6 @@ class Asset extends Pimcore_Model_Abstract implements Element_Interface {
     }
     
     public function __wakeup() {
-        if(isset($this->_fulldump) && $this->properties !== null) {
-            $this->renewInheritedProperties();
-        }
-
         if(isset($this->_fulldump)) {
             // set current key and path this is necessary because the serialized data can have a different path than the original element (element was renamed or moved)
             $originalElement = Asset::getById($this->getId());
@@ -1361,6 +1394,10 @@ class Asset extends Pimcore_Model_Abstract implements Element_Interface {
             }
 
             unset($this->_fulldump);
+        }
+
+        if(isset($this->_fulldump) && $this->properties !== null) {
+            $this->renewInheritedProperties();
         }
     }
     
@@ -1381,7 +1418,13 @@ class Asset extends Pimcore_Model_Abstract implements Element_Interface {
     
     public function renewInheritedProperties () {
         $this->removeInheritedProperties();
-        
+
+        // add to registry to avoid infinite regresses in the following $this->getResource()->getProperties()
+        $cacheKey = "asset_" . $this->getId();
+        if(!Zend_Registry::isRegistered($cacheKey)) {
+            Zend_Registry::set($cacheKey, $this);
+        }
+
         $myProperties = $this->getProperties();
         $inheritedProperties = $this->getResource()->getProperties(true);
         $this->setProperties(array_merge($inheritedProperties, $myProperties));

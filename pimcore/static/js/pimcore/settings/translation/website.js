@@ -8,17 +8,17 @@
  * It is also available through the world-wide-web at this URL:
  * http://www.pimcore.org/license
  *
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
 pimcore.registerNS("pimcore.settings.translation.website");
 pimcore.settings.translation.website = Class.create(pimcore.settings.translations,{
 
-    dataUrl: '/admin/settings/translations',
-    exportUrl: '/admin/settings/translations-export',
-    importUrl:'/admin/settings/translations-import/?pimcore_admin_sid=' + pimcore.settings.sessionId,
-    cleanupUrl: "/admin/settings/translations-cleanup/type/website",
+    dataUrl: '/admin/translation/translations',
+    exportUrl: '/admin/translation/export',
+    importUrl:'/admin/translation/import/?pimcore_admin_sid=' + pimcore.settings.sessionId,
+    cleanupUrl: "/admin/translation/cleanup/type/website",
 
 
    activate: function (filter) {

@@ -11,7 +11,7 @@
  *
  * @category   Pimcore
  * @package    Tool
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -47,7 +47,6 @@ class Tool_Setup extends Pimcore_Model_Abstract {
 					"language" => "en",
 					"validLanguages" => "en",
 					"debug" => "1",
-					"loginscreenimageservice" => "1",
 					"loglevel" => array(
 						"debug" => "1",
 						"info" => "1",

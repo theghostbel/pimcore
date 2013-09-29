@@ -8,7 +8,7 @@
  * It is also available through the world-wide-web at this URL:
  * http://www.pimcore.org/license
  *
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -16,7 +16,67 @@
 pimcore.registerNS("pimcore.helpers.x");
 
 
-pimcore.helpers.openAsset = function (id, type) {
+pimcore.helpers.registerKeyBindings = function (bindEl, ExtJS) {
+
+    if(!ExtJS) {
+        ExtJS = Ext;
+    }
+
+    // handler for STRG+S (Save&Publish)
+    var mapCtrlS = new ExtJS.KeyMap(bindEl, {
+        key:"s",
+        fn: top.pimcore.helpers.handleCtrlS,
+        ctrl:true,
+        alt:false,
+        shift:false,
+        stopEvent:true
+    });
+
+    // handler for F5
+    var mapF5 = new ExtJS.KeyMap(bindEl, {
+        key:[116],
+        fn: top.pimcore.helpers.handleF5,
+        stopEvent:true
+    });
+
+    var openAssetById = new ExtJS.KeyMap(bindEl, {
+        key:"a",
+        fn: top.pimcore.helpers.openElementByIdDialog.bind(this, "asset"),
+        ctrl:true,
+        alt:false,
+        shift:true,
+        stopEvent:true
+    });
+
+    var openObjectById = new ExtJS.KeyMap(bindEl, {
+        key:"o",
+        fn: top.pimcore.helpers.openElementByIdDialog.bind(this, "object"),
+        ctrl:true,
+        alt:false,
+        shift:true,
+        stopEvent:true
+    });
+
+    var openDocumentById = new ExtJS.KeyMap(bindEl, {
+        key:"d",
+        fn: top.pimcore.helpers.openElementByIdDialog.bind(this, "document"),
+        ctrl:true,
+        alt:false,
+        shift:true,
+        stopEvent:true
+    });
+
+    var openDocumentByPath = new ExtJS.KeyMap(bindEl, {
+        key:"f",
+        fn: top.pimcore.helpers.openElementByIdDialog.bind(this, "document"),
+        ctrl:true,
+        alt:false,
+        shift:true,
+        stopEvent:true
+    });
+};
+
+pimcore.helpers.openAsset = function (id, type, ignoreForHistory) {
 
     if (pimcore.globalmanager.exists("asset_" + id) == false) {
 
@@ -30,6 +90,12 @@ pimcore.helpers.openAsset = function (id, type) {
         }
 
         pimcore.helpers.rememberOpenTab("asset_" + id + "_" + type);
+
+        if (ignoreForHistory) {
+            var element = pimcore.globalmanager.get("asset_" + id);
+            element.setAddToHistory(false);
+        }
+
     }
     else {
         pimcore.globalmanager.get("asset_" + id).activate();
@@ -46,12 +112,17 @@ pimcore.helpers.closeAsset = function (id) {
     pimcore.globalmanager.remove("asset_" + id);
 };
 
-pimcore.helpers.openDocument = function (id, type) {
+pimcore.helpers.openDocument = function (id, type, ignoreForHistory) {
     if (pimcore.globalmanager.exists("document_" + id) == false) {
         if (pimcore.document[type]) {
             pimcore.helpers.addTreeNodeLoadingIndicator("document", id);
             pimcore.globalmanager.add("document_" + id, new pimcore.document[type](id));
             pimcore.helpers.rememberOpenTab("document_" + id + "_" + type);
+
+            if (ignoreForHistory) {
+                var element = pimcore.globalmanager.get("document_" + id);
+                element.setAddToHistory(false);
+            }
         }
     }
     else {
@@ -70,7 +141,7 @@ pimcore.helpers.closeDocument = function (id) {
     pimcore.globalmanager.remove("document_" + id);
 };
 
-pimcore.helpers.openObject = function (id, type) {
+pimcore.helpers.openObject = function (id, type, ignoreForHistory) {
     if (pimcore.globalmanager.exists("object_" + id) == false) {
         pimcore.helpers.addTreeNodeLoadingIndicator("object", id);
 
@@ -80,6 +151,11 @@ pimcore.helpers.openObject = function (id, type) {
 
         pimcore.globalmanager.add("object_" + id, new pimcore.object[type](id));
         pimcore.helpers.rememberOpenTab("object_" + id + "_" + type);
+
+        if (ignoreForHistory) {
+            var element = pimcore.globalmanager.get("object_" + id);
+            element.setAddToHistory(false);
+        }
     }
     else {
         var tab = pimcore.globalmanager.get("object_" + id);
@@ -97,6 +173,70 @@ pimcore.helpers.closeObject = function (id) {
     pimcore.globalmanager.remove("object_" + id);
 };
 
+pimcore.helpers.getHistory = function() {
+    var history = localStorage.getItem("pimcore_element_history");
+    if (!history) {
+        history = [];
+    } else {
+        history = JSON.parse(history);
+    }
+    return history;
+}
+
+pimcore.helpers.recordElement = function(id, type, name) {
+
+    var history = pimcore.helpers.getHistory();
+
+    var newDate = new Date();
+
+    for(var i = history.length-1; i >= 0; i--){
+        var item = history[i];
+        if (item.type == type && item.id == id) {
+            history.splice(i, 1);
+        }
+    }
+
+
+    var historyItem = {
+        id: id,
+        type: type,
+        name: name,
+        time: newDate.getTime()
+    };
+    history.unshift(historyItem);
+
+    history = history.slice(0, 30);
+
+    var json = JSON.stringify(history);
+    localStorage.setItem("pimcore_element_history", json);
+
+    try {
+        var historyPanel = pimcore.globalmanager.get("element_history");
+        if(historyPanel) {
+            var thePair = {"id" : id,
+                "type": type,
+                "name": name,
+                "time": newDate };
+
+            var storeCount = historyPanel.store.getCount();
+            for(var i = storeCount - 1; i >= 0; i--) {
+
+                var record = historyPanel.store.getAt(i);
+                var data = record.data;
+                if (i > 100 || (data.id == id && data.type == type)) {
+                    historyPanel.store.remove(record);
+                }
+            }
+
+            historyPanel.store.insert(0, new historyPanel.store.recordType(thePair));
+            historyPanel.resultpanel.getView().refresh();
+        }
+    }
+    catch (e) {
+        console.log(e);
+    }
+
+};
 
 pimcore.helpers.openElement = function (id, type, subtype) {
     if(typeof subtype != "undefined") {
@@ -264,7 +404,7 @@ pimcore.helpers.showNotification = function (title, text, type, errorText, hideD
 
         if(errorText != null && errorText != undefined){
             text = text + '<br /><br /><textarea style="width:300px; height:100px; font-size:11px;">'
-                                                                            + strip_tags(errorText) + "</textarea>";
+                + strip_tags(errorText) + "</textarea>";
         }
         Ext.MessageBox.show({
             title:title,
@@ -342,30 +482,56 @@ pimcore.helpers.lockManager = function (cid, ctype, csubtype, data) {
     lockDetails += "<br /><br />" + t("element_lock_question");
 
     Ext.MessageBox.confirm(t("element_is_locked"), t("element_lock_message") + lockDetails,
-            function (lock, buttonValue) {
-                if (buttonValue == "yes") {
-                    Ext.Ajax.request({
-                        url: "/admin/element/unlock-element",
-                        params: {
-                            id: lock[0],
-                            type:  lock[1]
-                        },
-                        success: function () {
-                            pimcore.helpers.openElement(lock[0], lock[1], lock[2]);
-                        }
-                    });
-                }
-            }.bind(this, arguments));
+        function (lock, buttonValue) {
+            if (buttonValue == "yes") {
+                Ext.Ajax.request({
+                    url: "/admin/element/unlock-element",
+                    params: {
+                        id: lock[0],
+                        type:  lock[1]
+                    },
+                    success: function () {
+                        pimcore.helpers.openElement(lock[0], lock[1], lock[2]);
+                    }
+                });
+            }
+        }.bind(this, arguments));
 };
 
 
-pimcore.helpers.closeAllElements = function () {
+pimcore.helpers.closeAllUnmodified = function () {
+    var unmodifiedElements = [];
+
     var tabs = Ext.getCmp("pimcore_panel_tabs").items;
     if (tabs.getCount() > 0) {
-        if (tabs.getCount() > 1) {
-            window.setTimeout(pimcore.helpers.closeAllElements, 200);
-        }
-        Ext.getCmp("pimcore_panel_tabs").remove(tabs.first());
+        tabs.each(function (item, index, length) {
+            if(item.title.indexOf("*") > -1) {
+                unmodifiedElements.push(item);
+            }
+        });
+    };
+
+    pimcore.helpers.closeAllElements(unmodifiedElements);
+}
+
+pimcore.helpers.closeAllElements = function (except) {
+
+    var exceptions = [];
+    if(except instanceof Ext.Panel) {
+        exceptions.push(except);
+    } else if (except instanceof Array) {
+        exceptions = except;
+    }
+
+    var tabs = Ext.getCmp("pimcore_panel_tabs").items;
+    if (tabs.getCount() > 0) {
+        tabs.each(function (item, index, length) {
+            window.setTimeout(function () {
+                if(!in_array(item, exceptions)) {
+                    Ext.getCmp("pimcore_panel_tabs").remove(item);
+                }
+            }, 100*index);
+        });
     }
 };
 
@@ -538,7 +704,7 @@ pimcore.helpers.deleteAssetFromServer = function (id, r, callback, button) {
                 this.deleteWindow.close();
 
                 pimcore.helpers.showNotification(t("error"), t("there_was_a_problem_during_deleting"),
-                                                                    "error", t(message));
+                    "error", t(message));
 
                 var node = pimcore.globalmanager.get("layout_asset_tree").tree.getNodeById(id);
                 if(node) {
@@ -854,11 +1020,11 @@ pimcore.helpers.openMemorizedTabs = function () {
                 window.setTimeout(function (parts) {
                     if(parts[1] && parts[2]) {
                         if(parts[0] == "asset") {
-                            pimcore.helpers.openAsset(parts[1], parts[2]);
+                            pimcore.helpers.openAsset(parts[1], parts[2], true);
                         } else if(parts[0] == "document") {
-                            pimcore.helpers.openDocument(parts[1], parts[2]);
+                            pimcore.helpers.openDocument(parts[1], parts[2], true);
                         } else if(parts[0] == "object") {
-                            pimcore.helpers.openObject(parts[1], parts[2]);
+                            pimcore.helpers.openObject(parts[1], parts[2], true);
                         }
                     }
                 }.bind(this, parts), 200);
@@ -1061,7 +1227,7 @@ pimcore.helpers.getClassForIcon = function (icon) {
     var styleContainer = Ext.get(styleContainerId);
     if(!styleContainer) {
         styleContainer = Ext.getBody().insertHtml("beforeEnd", '<style type="text/css" id="' + styleContainerId
-                                                                                        + '"></style>', true);
+            + '"></style>', true);
     }
 
     var content = styleContainer.dom.innerHTML;
@@ -1082,23 +1248,27 @@ pimcore.helpers.openElementByIdDialog = function (type) {
         });
 };
 
+pimcore.helpers.openDocumentByPath = function (path) {
+    Ext.Ajax.request({
+        url: "/admin/document/open-by-url/",
+        params: {
+            url: path
+        },
+        success: function (response) {
+            var res = Ext.decode(response.responseText);
+            if(res.success) {
+                pimcore.helpers.openDocument(res.id, res.type);
+            } else {
+                Ext.MessageBox.alert(t("error"), t("no_matching_document_found_for") + ": " + value);
+            }
+        }.bind(this)
+    });
+};
+
 pimcore.helpers.openDocumentByPathDialog = function () {
     Ext.MessageBox.prompt(t("open_document_by_url"), t("path_or_url_incl_http"), function (button, value, object) {
         if (button == "ok") {
-            Ext.Ajax.request({
-                url: "/admin/document/open-by-url/",
-                params: {
-                    url: value
-                },
-                success: function (response) {
-                    var res = Ext.decode(response.responseText);
-                    if(res.success) {
-                        pimcore.helpers.openDocument(res.id, res.type);
-                    } else {
-                        Ext.MessageBox.alert(t("error"), t("no_matching_document_found_for") + ": " + value);
-                    }
-                }.bind(this)
-            });
+            pimcore.helpers.openDocumentByPath(value);
         }
     });
 };
@@ -1122,7 +1292,7 @@ pimcore.helpers.urlToCanvas = function (url, callback) {
     iframe.setAttribute("src", url);
     iframe.setAttribute("allowtransparency", "false");
     iframe.setAttribute("style","width:1280px; height:1000px; position:absolute; left:-10000; "
-                    + "top:-10000px; background:#fff;");
+        + "top:-10000px; background:#fff;");
     iframe.onload = function () {
         window.setTimeout(function () {
             html2canvas([window[frameId].document.body], {
@@ -1157,43 +1327,43 @@ pimcore.helpers.generatePagePreview = function (id, path, callback) {
             }
         });
     } /*else {
-        // DISABLED BECAUSE NOT REALLY SATISFIED WITH THE RESULTS
+     // DISABLED BECAUSE NOT REALLY SATISFIED WITH THE RESULTS
 
-        pimcore.helpers.urlToCanvas(path, function (id, canvas) {
+     pimcore.helpers.urlToCanvas(path, function (id, canvas) {
 
-            // resize canvas
-            var tempCanvas = document.createElement('canvas');
-            tempCanvas.width = canvas.width;
-            tempCanvas.height = canvas.height;
+     // resize canvas
+     var tempCanvas = document.createElement('canvas');
+     tempCanvas.width = canvas.width;
+     tempCanvas.height = canvas.height;
 
-            tempCanvas.getContext('2d').drawImage(canvas, 0, 0);
+     tempCanvas.getContext('2d').drawImage(canvas, 0, 0);
 
-            // resize to width 400px
-            canvas.width = tempCanvas.width / 3.2;
-            canvas.height = tempCanvas.height / 3.2;
+     // resize to width 400px
+     canvas.width = tempCanvas.width / 3.2;
+     canvas.height = tempCanvas.height / 3.2;
 
-            // draw temp canvas back into canvas, scaled as needed
-            canvas.getContext('2d').drawImage(tempCanvas, 0, 0, tempCanvas.width, tempCanvas.height, 0, 0,
-                                                                                    canvas.width, canvas.height);
-            delete tempCanvas;
+     // draw temp canvas back into canvas, scaled as needed
+     canvas.getContext('2d').drawImage(tempCanvas, 0, 0, tempCanvas.width, tempCanvas.height, 0, 0,
+     canvas.width, canvas.height);
+     delete tempCanvas;
 
-            var data = canvas.toDataURL('image/jpeg', 85);
+     var data = canvas.toDataURL('image/jpeg', 85);
 
-            Ext.Ajax.request({
-                url: '/admin/page/upload-screenshot',
-                method: "post",
-                params: {
-                    id: id,
-                    data: data
-                },
-                success: function () {
-                    if(typeof cb == "function") {
-                        cb();
-                    }
-                }
-            });
-        }.bind(this, id));
-    }*/
+     Ext.Ajax.request({
+     url: '/admin/page/upload-screenshot',
+     method: "post",
+     params: {
+     id: id,
+     data: data
+     },
+     success: function () {
+     if(typeof cb == "function") {
+     cb();
+     }
+     }
+     });
+     }.bind(this, id));
+     }*/
 };
 
 pimcore.helpers.treeNodeThumbnailPreview = function (tree, parent, node, index) {
@@ -1209,6 +1379,7 @@ pimcore.helpers.treeNodeThumbnailPreview = function (tree, parent, node, index) 
                 }
 
                 var imageHtml = "";
+                var imagePreload = [];
 
                 var uriPrefix = window.location.protocol + "//" + window.location.host;
 
@@ -1216,15 +1387,14 @@ pimcore.helpers.treeNodeThumbnailPreview = function (tree, parent, node, index) 
                 if(thumbnails && thumbnails.length) {
                     imageHtml += '<div class="thumbnails">';
                     for(var i=0; i<thumbnails.length; i++) {
-                        imageHtml += '<div class="small" ' +
-                            'style="background-image:url(' + uriPrefix + thumbnails[i] + ')"></div>';
+                        imageHtml += '<div class="thumb small"><img src="' + uriPrefix + thumbnails[i] + '" onload="this.parentNode.className += \' complete\';" /></div>';
                     }
                     imageHtml += '</div>';
                 }
 
                 var thumbnail = node.attributes.thumbnail;
                 if(thumbnail) {
-                    imageHtml = '<img src="' + uriPrefix + thumbnail + '" />';
+                    imageHtml = '<div class="thumb big"><img src="' + uriPrefix + thumbnail + '" onload="this.parentNode.className += \' complete\';" /></div>';
                 }
 
                 if(imageHtml) {
@@ -1266,8 +1436,18 @@ pimcore.helpers.treeNodeThumbnailPreview = function (tree, parent, node, index) 
                     iframe.setAttribute("marginwidth", "0");
                     iframe.setAttribute("style", "width: 100%; height: 2500px;");
 
-                    imageHtml += '<link rel="stylesheet" type="text/css" ' +
-                        'href="' + uriPrefix + '/pimcore/static/css/tree-preview-frame.css" />';
+                    imageHtml =
+                        '<style type="text/css">' +
+                            'body { margin:0; padding: 0; } ' +
+                            '.thumbnails { width: 410px; } ' +
+                            '.thumb { border: 1px solid #999; border-radius: 5px; background: url(' + uriPrefix + '/pimcore/static/img/loading.gif) no-repeat center center; box-sizing: border-box; -webkit-box-sizing: border-box; -moz-box-sizing:border-box; } ' +
+                            '.big { min-height: 300px; } ' +
+                            '.complete { border:none; border-radius: 0;}' +
+                            '.small { width: 130px; height: 130px; float: left; overflow: hidden; margin: 0 5px 5px 0; } ' +
+                            '.small.complete img { min-width: 100%; max-height: 100%; } ' +
+                            '/* firefox fix: remove loading/broken image icon */ @-moz-document url-prefix() { img:-moz-loading { visibility: hidden; } img:-moz-broken { -moz-force-broken-image-icon: 0;}} ' +
+                        '</style>' +
+                        imageHtml;
 
                     iframe.onload = function () {
                         this.contentWindow.document.body.innerHTML = imageHtml;
@@ -1322,4 +1502,55 @@ pimcore.helpers.insertTextAtCursorPosition = function (text) {
     }
 
 };
+
+
+pimcore.helpers.handleTabRightClick = function (tabPanel, el, index) {
+    if(Ext.get(el.tabEl)) {
+        Ext.get(el.tabEl).on("contextmenu", function (e) {
+            var menu = new Ext.menu.Menu({
+                items: [{
+                    text: t('close_others'),
+                    iconCls: "",
+                    handler: function (item) {
+                        pimcore.helpers.closeAllElements(el);
+                        // clear the opentab store, so that also non existing elements are flushed
+                        pimcore.helpers.clearOpenTab();
+                    }.bind(this)
+                }, {
+                    text: t('close_all'),
+                    iconCls: "",
+                    handler: function (item) {
+                        pimcore.helpers.closeAllElements();
+                        // clear the opentab store, so that also non existing elements are flushed
+                        pimcore.helpers.clearOpenTab();
+                    }.bind(this)
+                }, {
+                    text: t('close_unmodified'),
+                    iconCls: "",
+                    handler: function (item) {
+                        pimcore.helpers.closeAllUnmodified();
+                        // clear the opentab store, so that also non existing elements are flushed
+                        pimcore.helpers.clearOpenTab();
+                    }.bind(this)
+                }]
+            });
+
+
+
+            /*menu.add(new Ext.menu.Item({
+             text: t('close_all'),
+             iconCls: "",
+             handler: function (item) {
+             pimcore.helpers.closeAllElements();
+             // clear the opentab store, so that also non existing elements are flushed
+             pimcore.helpers.clearOpenTab();
+             }.bind(this)
+             }));*/
+
+            menu.showAt(e.getXY());
+            e.stopEvent();
+        });
+    }
+};
+
 

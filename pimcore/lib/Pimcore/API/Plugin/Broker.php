@@ -9,7 +9,7 @@
  * It is also available through the world-wide-web at this URL:
  * http://www.pimcore.org/license
  *
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -145,6 +145,22 @@ class Pimcore_API_Plugin_Broker {
     }
 
     /**
+     * Is a module of a particular class registered?
+     *
+     * @param  string $class
+     * @return bool
+     */
+    public function hasModule($class) {
+        foreach ($this->_systemModules as $module) {
+            $type = get_class($module);
+            if ($class == $type) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Retrieve a plugin or plugins by class
      *
      * @param  string $class Class name of plugin(s) desired
@@ -178,7 +194,24 @@ class Pimcore_API_Plugin_Broker {
         return $this->_plugins;
     }
 
+    /**
+     * Retrieve all modules
+     *
+     * @return array
+     */
+    public function getModules() {
+        return $this->_systemModules;
+    }
 
+    /**
+     * Returns Plugins and Modules
+     * @return array
+     */
+    public function getSystemComponents(){
+        $modules = (array)$this->getModules();
+        $plugins = (array)$this->getPlugins();
+        return array_merge($modules,$plugins);
+    }
     /**
      *
      * Calls preAddAsset functions of all registered plugins and system modules

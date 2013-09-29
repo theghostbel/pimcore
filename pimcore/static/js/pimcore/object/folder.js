@@ -8,7 +8,7 @@
  * It is also available through the world-wide-web at this URL:
  * http://www.pimcore.org/license
  *
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -121,6 +121,10 @@ pimcore.object.folder = Class.create(pimcore.object.abstract, {
         this.removeLoadingPanel();
 
         this.tabPanel.add(this.tab);
+
+        if (this.getAddToHistory()) {
+            pimcore.helpers.recordElement(this.id, "object", this.data.general.o_path + this.data.general.o_key);
+        }
 
         // recalculate the layout
         pimcore.layout.refresh();

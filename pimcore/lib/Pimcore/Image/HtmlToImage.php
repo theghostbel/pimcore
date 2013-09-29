@@ -9,7 +9,7 @@
  * It is also available through the world-wide-web at this URL:
  * http://www.pimcore.org/license
  *
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
  
@@ -75,6 +75,10 @@ class Pimcore_Image_HtmlToImage {
      * @return bool
      */
     public static function convert($url, $outputFile, $screenWidth = 1200, $format = "png") {
+
+        // add parameter pimcore_preview to prevent inclusion of google analytics code
+        $url .= (strpos($url, "?") ? "&" : "?") . "pimcore_preview=true";
+
 
         // use xvfb if possible
         if($xvfb = self::getXvfbBinary()) {

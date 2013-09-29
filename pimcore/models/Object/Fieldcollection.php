@@ -11,7 +11,7 @@
  *
  * @category   Pimcore
  * @package    Object_Fieldcollection
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -101,6 +101,8 @@ class Object_Fieldcollection extends Pimcore_Model_Abstract implements Iterator 
                     if(in_array($collection->getType(),$allowedTypes)) {
                         $collection->setFieldname($this->getFieldname());
                         $collection->setIndex($index++);
+
+                        // set the current object again, this is necessary because the related object in $this->object can change (eg. clone & copy & paste, etc.)
                         $collection->setObject($object);
                         $collection->save($object);
                     } else {

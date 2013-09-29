@@ -8,7 +8,7 @@
  * It is also available through the world-wide-web at this URL:
  * http://www.pimcore.org/license
  *
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -20,9 +20,8 @@ pimcore.document.tags.numeric = Class.create(pimcore.document.tag, {
         this.id = id;
         this.name = name;
         this.setupWrapper();
-        if (!options) {
-            options = {};
-        }
+        options = this.parseOptions(options);
+
         if (!data) {
             data = "";
         }

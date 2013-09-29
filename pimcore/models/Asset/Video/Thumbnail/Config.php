@@ -11,7 +11,7 @@
  *
  * @category   Pimcore
  * @package    Asset
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
  
@@ -82,6 +82,27 @@ class Asset_Video_Thumbnail_Config {
         return $dir;
     }
 
+    /**
+     * @return Asset_Video_Thumbnail_Config
+     */
+    public static function getPreviewConfig () {
+        $config = new self();
+        $config->setName("pimcore-system-treepreview");
+        $config->setAudioBitrate(128);
+        $config->setVideoBitrate(700);
+
+        $config->setItems(array(
+            array(
+                "method" => "scaleByWidth",
+                "arguments" =>
+                array(
+                    "width" => 500
+                )
+            )
+        ));
+
+        return $config;
+    }
 
     /**
      * @return void

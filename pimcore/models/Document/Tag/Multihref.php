@@ -11,7 +11,7 @@
  *
  * @category   Pimcore
  * @package    Document
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -196,6 +196,36 @@ class Document_Tag_Multihref extends Document_Tag implements Iterator{
         }
 
         return $dependencies;
+    }
+
+    /**
+     * Rewrites id from source to target, $idMapping contains
+     * array(
+     *  "document" => array(
+     *      SOURCE_ID => TARGET_ID,
+     *      SOURCE_ID => TARGET_ID
+     *  ),
+     *  "object" => array(...),
+     *  "asset" => array(...)
+     * )
+     * @param array $idMapping
+     * @return void
+     */
+    public function rewriteIds($idMapping) {
+        // reset existing elements store
+        $this->elements = array();
+
+        foreach ($this->elementIds as &$elementId) {
+
+            $type = $elementId["type"];
+            $id = $elementId["id"];
+
+            if(array_key_exists($type, $idMapping) and array_key_exists((int) $id, $idMapping[$type])) {
+                $elementId["id"] = $idMapping[$type][$id];
+            }
+        }
+
+        $this->setElements();
     }
 
     public function getFromWebserviceImport($wsElement, $idMapper = null) {

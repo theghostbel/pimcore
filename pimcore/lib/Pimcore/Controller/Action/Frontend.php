@@ -9,7 +9,7 @@
  * It is also available through the world-wide-web at this URL:
  * http://www.pimcore.org/license
  *
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -50,6 +50,7 @@ abstract class Pimcore_Controller_Action_Frontend extends Pimcore_Controller_Act
         Document::setHideUnpublished(true);
         Object_Abstract::setHideUnpublished(true);
         Object_Abstract::setGetInheritedValues(true);
+        Object_Localizedfield::setGetFallbackValues(true);
 
         // contains the logged in user if necessary
         $user = null;
@@ -69,6 +70,18 @@ abstract class Pimcore_Controller_Action_Frontend extends Pimcore_Controller_Act
             $this->view->editmode = false;
 
             self::$isInitial = false;
+
+            // check for a locale first, and set it if available
+            if($this->getParam("pimcore_parentDocument")) {
+                // this is a special exception for renderlets in editmode (ajax request), because they depend on the locale of the parent document
+                // otherwise there'll be notices like:  Notice: 'No translation for the language 'XX' available.'
+                if($parentDocument = Document::getById($this->getParam("pimcore_parentDocument"))) {
+                    if($parentDocument->getProperty("language")) {
+                        $this->setLocale($parentDocument->getProperty("language"));
+                    }
+                }
+            }
+
 
             // no document available, continue, ...
             return;
@@ -112,9 +125,7 @@ abstract class Pimcore_Controller_Action_Frontend extends Pimcore_Controller_Act
 
         // register global locale if the document has the system property "language"
         if($this->document->getProperty("language")) {
-            $locale = new Zend_Locale($this->document->getProperty("language"));
-		    Zend_Registry::set('Zend_Locale', $locale);
-            $this->getResponse()->setHeader("Content-Language",strtolower(str_replace("_","-", (string) $locale)), true);
+            $this->setLocale($this->document->getProperty("language"));
         }
 
         // for editmode
@@ -124,7 +135,7 @@ abstract class Pimcore_Controller_Action_Frontend extends Pimcore_Controller_Act
                 
                 // check if there is the document in the session
                 $docKey = "document_" . $this->getDocument()->getId();
-                $docSession = new Zend_Session_Namespace("pimcore_documents");
+                $docSession = Pimcore_Tool_Session::getReadOnly("pimcore_documents");
 
                 if ($docSession->$docKey) {
                     // if there is a document in the session use it
@@ -139,7 +150,7 @@ abstract class Pimcore_Controller_Action_Frontend extends Pimcore_Controller_Act
                         }
                     }
                 }
-                
+
                 // register editmode plugin
                 $front = Zend_Controller_Front::getInstance();
                 $front->registerPlugin(new Pimcore_Controller_Plugin_Frontend_Editmode($this), 1000);
@@ -158,7 +169,7 @@ abstract class Pimcore_Controller_Action_Frontend extends Pimcore_Controller_Act
             if ($this->getParam("pimcore_preview")) {
                 // get document from session
                 $docKey = "document_" . $this->getParam("document")->getId();
-                $docSession = new Zend_Session_Namespace("pimcore_documents");
+                $docSession = Pimcore_Tool_Session::getReadOnly("pimcore_documents");
 
                 if ($docSession->$docKey) {
                     $this->setDocument($docSession->$docKey);
@@ -168,7 +179,8 @@ abstract class Pimcore_Controller_Action_Frontend extends Pimcore_Controller_Act
             // object preview
             if ($this->getParam("pimcore_object_preview")) {
                 $key = "object_" . $this->getParam("pimcore_object_preview");
-                $session = new Zend_Session_Namespace("pimcore_objects");
+
+                $session = Pimcore_Tool_Session::getReadOnly("pimcore_objects");
                 if($session->$key) {
                     $object = $session->$key;
                     // add the object to the registry so every call to Object_Abstract::getById() will return this object instead of the real one
@@ -233,6 +245,14 @@ abstract class Pimcore_Controller_Action_Frontend extends Pimcore_Controller_Act
         return $this->config;
     }
 
+    public function setLocale($locale) {
+        if(Zend_Locale::isLocale($locale)) {
+            $locale = new Zend_Locale($locale);
+            Zend_Registry::set('Zend_Locale', $locale);
+            $this->getResponse()->setHeader("Content-Language",strtolower(str_replace("_","-", (string) $locale)), true);
+        }
+    }
+
     public function setDocument($document) {
         if ($document instanceof Document) {
             $this->document = $document;
@@ -253,12 +273,8 @@ abstract class Pimcore_Controller_Action_Frontend extends Pimcore_Controller_Act
             // setup Zend_Translate
             try {
                 $locale = Zend_Registry::get("Zend_Locale");
-                $cacheKey = "translator_website";
 
-                if (!$translate = Pimcore_Model_Cache::load($cacheKey)) {
-                    $translate = new Pimcore_Translate_Website($locale);
-                    Pimcore_Model_Cache::save($translate, $cacheKey, array("translator","translator_website","translate"), null, 999);
-                }
+                $translate = new Pimcore_Translate_Website($locale);
 
                 if(Pimcore_Tool::isValidLanguage($locale)) {
                     $translate->setLocale($locale);    

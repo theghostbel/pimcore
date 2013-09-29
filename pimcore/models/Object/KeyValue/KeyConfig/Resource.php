@@ -11,7 +11,7 @@
  *
  * @category   Pimcore
  * @package    Object
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -112,7 +112,7 @@ class Object_KeyValue_KeyConfig_Resource extends Pimcore_Model_Resource_Abstract
                         $value = (int) $value;
                     }
                     if(is_array($value) || is_object($value)) {
-                        $value = serialize($value);
+                        $value = Pimcore_Tool_Serialize::serialize($value);
                     }
 
                     $data[$key] = $value;

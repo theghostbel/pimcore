@@ -11,7 +11,7 @@
  *
  * @category   Pimcore
  * @package    Tool
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -183,7 +183,12 @@ class Tool_Targeting_Rule extends Pimcore_Model_Abstract {
      */
     public function getActions()
     {
-        return $this->actions;
+        // this is to be backward compatible (was Tool_Targeting_Actions)
+        if($this->actions instanceof Tool_Targeting_Rule_Actions) {
+            return $this->actions;
+        }
+
+        return new Tool_Targeting_Rule_Actions();
     }
 
     /**

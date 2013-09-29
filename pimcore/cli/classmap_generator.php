@@ -9,7 +9,7 @@
  * It is also available through the world-wide-web at this URL:
  * http://www.pimcore.org/license
  *
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -46,7 +46,8 @@ if($opts->getOption("core")) {
         PIMCORE_PATH . "/lib",
         PIMCORE_PATH . "/models",
         PIMCORE_PATH . "/modules/searchadmin/models",
-        PIMCORE_PATH . "/lib/_deprecated"
+        PIMCORE_PATH . "/modules/deployment/models",
+        PIMCORE_PATH . "/modules/deployment/lib"
     );
     $output = PIMCORE_PATH . "/config/autoload-classmap.php";
 } else {

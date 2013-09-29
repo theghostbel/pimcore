@@ -8,7 +8,7 @@
  * It is also available through the world-wide-web at this URL:
  * http://www.pimcore.org/license
  *
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -317,12 +317,16 @@ pimcore.object.helpers.gridTabAbstract = Class.create({
         var visibleColumns = [];
         for(var i = 0; i < fieldKeys.length; i++) {
             if(!fields[fieldKeys[i]].hidden) {
-                visibleColumns.push({
+                var fc = {
                     key: fieldKeys[i],
                     label: fields[fieldKeys[i]].fieldConfig.label,
                     dataType: fields[fieldKeys[i]].fieldConfig.type,
                     layout: fields[fieldKeys[i]].fieldConfig.layout
-                });
+                };
+                if (fields[fieldKeys[i]].fieldConfig.width) {
+                    fc.width = fields[fieldKeys[i]].fieldConfig.width;
+                }
+                visibleColumns.push(fc);
             }
         }
 
@@ -354,6 +358,7 @@ pimcore.object.helpers.gridTabAbstract = Class.create({
                     name: cm.config[i].dataIndex,
                     position: i,
                     hidden: cm.config[i].hidden,
+                    width: cm.config[i].width,
                     fieldConfig: this.fieldObject[cm.config[i].dataIndex]
                 };
             }

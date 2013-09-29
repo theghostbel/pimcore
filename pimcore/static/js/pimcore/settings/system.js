@@ -8,7 +8,7 @@
  * It is also available through the world-wide-web at this URL:
  * http://www.pimcore.org/license
  *
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -229,12 +229,6 @@ pimcore.settings.system = Class.create({
                                 name: "general.contactemail",
                                 value: this.getValue("general.contactemail"),
                                 width: 300
-                            },
-                            {
-                                fieldLabel: t('show_random_pictures_on_login_screen'),
-                                xtype: "checkbox",
-                                name: "general.loginscreenimageservice",
-                                checked: this.getValue("general.loginscreenimageservice")
                             },
                             {
                                 fieldLabel: t("url_to_custom_image_on_login_screen"),
@@ -1034,6 +1028,11 @@ pimcore.settings.system = Class.create({
                                 name: 'assets.ghostscript',
                                 value: this.getValue("assets.ghostscript"),
                                 width: 300
+                            },{
+                                fieldLabel: t('absolute_path_to_libreoffice'),
+                                name: 'assets.libreoffice',
+                                value: this.getValue("assets.libreoffice"),
+                                width: 300
                             },
                             {
                                 fieldLabel: t('absolute_path_to_icc_rgb_profile') + " (imagick)",
@@ -1225,13 +1224,6 @@ pimcore.settings.system = Class.create({
                         defaults: {width: 300},
                         items :[
                             {
-                                fieldLabel: t("image_datauri_filter"),
-                                xtype: "checkbox",
-                                name: "outputfilters.imagedatauri",
-                                checked: this.getValue("outputfilters.imagedatauri"),
-                                style: "margin-bottom: 15px;"
-                            },
-                            {
                                 fieldLabel: "LESS",
                                 xtype: "checkbox",
                                 name: "outputfilters.less",
@@ -1242,35 +1234,6 @@ pimcore.settings.system = Class.create({
                                 xtype: "textfield",
                                 name: "outputfilters.lesscpath",
                                 value: this.getValue("outputfilters.lesscpath"),
-                                style: "margin-bottom: 15px;"
-                            },
-                            {
-                                fieldLabel: t("minify_css"),
-                                xtype: "checkbox",
-                                name: "outputfilters.cssminify",
-                                checked: this.getValue("outputfilters.cssminify"),
-                                style: "margin-bottom: 15px;"
-                            },
-                            {
-                                fieldLabel: t("minify_javascript"),
-                                xtype: "checkbox",
-                                name: "outputfilters.javascriptminify",
-                                checked: this.getValue("outputfilters.javascriptminify")
-                            },
-                            {
-                                fieldLabel: t("minify_javascript_algorithm"),
-                                xtype: "combo",
-                                name: "outputfilters.javascriptminifyalgorithm",
-                                value: this.getValue("outputfilters.javascriptminifyalgorithm"),
-                                store: [
-                                    [" ", "default"],
-                                    ["jsmin","JSMin"],
-                                    ["jsminplus","JSMinPlus"],
-                                    ["yuicompressor", "YUI Compressor (Java required)"]
-                                ],
-                                mode: "local",
-                                triggerAction: "all",
-                                editable: false,
                                 style: "margin-bottom: 15px;"
                             }
                         ]
@@ -1522,6 +1485,10 @@ pimcore.settings.system = Class.create({
 
     addLanguage: function (language) {
 
+        if(empty(language)) {
+            return;
+        }
+
         // find the language entry in the store, because "language" can be the display value too
         var index = this.languagesStore.findExact("language", language);
         if(index < 0) {
@@ -1543,6 +1510,11 @@ pimcore.settings.system = Class.create({
 
             // add the language to the container, so that further settings for the language can be set (eg. fallback, ...)
             var container = Ext.getCmp("system.settings.general.languageConainer");
+            var lang = container.getComponent(language);
+            if(lang) {
+                return;
+            }
+
             container.add({
                 xtype: "fieldset",
                 itemId: language,

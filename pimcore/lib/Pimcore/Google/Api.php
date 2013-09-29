@@ -9,11 +9,13 @@
  * It is also available through the world-wide-web at this URL:
  * http://www.pimcore.org/license
  *
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
 class Pimcore_Google_Api {
+
+    const ANALYTICS_API_URL = 'https://www.googleapis.com/analytics/v3/';
 
     public static function getPrivateKeyPath() {
         return PIMCORE_CONFIGURATION_DIRECTORY . "/google-api-private-key.p12";
@@ -66,13 +68,13 @@ class Pimcore_Google_Api {
         $config = self::getConfig();
         self::loadClientLibrary();
 
-        $client = new apiClient(array(
+        $client = new Google_Client(array(
             "ioFileCache_directory" => PIMCORE_CACHE_DIRECTORY
         ));
         $client->setApplicationName("pimcore CMF");
 
         $key = file_get_contents(self::getPrivateKeyPath());
-        $client->setAssertionCredentials(new apiAssertionCredentials(
+        $client->setAssertionCredentials(new Google_AssertionCredentials(
             $config->email,
             array('https://www.googleapis.com/auth/analytics.readonly',"https://www.google.com/webmasters/tools/feeds/"),
             $key)
@@ -108,7 +110,7 @@ class Pimcore_Google_Api {
 
         self::loadClientLibrary();
 
-        $client = new apiClient(array(
+        $client = new Google_Client(array(
             "ioFileCache_directory" => PIMCORE_CACHE_DIRECTORY
         ));
         $client->setApplicationName("pimcore CMF");
@@ -117,15 +119,63 @@ class Pimcore_Google_Api {
         return $client;
     }
 
+    public static function getAnalyticsDimensions() {
+        return self::getAnalyticsMetadataByType('DIMENSION');
+    }
+
+    public static function getAnalyticsMetrics() {
+        return self::getAnalyticsMetadataByType('METRIC');
+    }
+
+    public static function getAnalyticsMetadata() {
+        $client = Pimcore_Tool::getHttpClient();
+        $client->setUri(self::ANALYTICS_API_URL.'metadata/ga/columns');
+
+        $result = $client->request();
+        return Zend_Json::decode($result->getBody());
+    }
+
+    protected static function getAnalyticsMetadataByType($type) {
+        $data = self::getAnalyticsMetadata();
+        $t = Zend_Registry::get("Zend_Translate");
+
+        $result = array();
+        foreach($data['items'] as $item) {
+            if($item['attributes']['type'] == $type) {
+
+                if(strpos($item['id'], 'XX') !== false) {
+                    for($i = 1; $i<=5; $i++) {
+                        $name = str_replace('1', $i, str_replace('01', $i, $t->translate($item['attributes']['uiName'])));
+
+                        if(in_array($item['id'], array('ga:dimensionXX', 'ga:metricXX'))) {
+                            $name .= ' '.$i;
+                        }
+                        $result[] = array(
+                            'id'=>str_replace('XX', $i, $item['id']),
+                            'name'=>$name
+                        );
+                    }
+                } else {
+                    $result[] = array(
+                        'id'=>$item['id'],
+                        'name'=>$t->translate($item['attributes']['uiName'])
+                    );
+                }
+            }
+        }
+
+        return $result;
+    }
+
     /**
      * load the client libs dynamically, otherwise just the initialization will raise an exception
      * see: http://www.pimcore.org/issues/browse/PIMCORE-1641
      * @static
      */
     private static function loadClientLibrary() {
-        include_once("googleApiClient/apiClient.php");
-        include_once("googleApiClient/contrib/apiAnalyticsService.php");
-        include_once("googleApiClient/contrib/apiSiteVerificationService.php");
-        include_once("googleApiClient/contrib/apiCustomsearchService.php");
+        include_once("googleApiClient/Google_Client.php");
+        include_once("googleApiClient/contrib/Google_AnalyticsService.php");
+        include_once("googleApiClient/contrib/Google_SiteVerificationService.php");
+        include_once("googleApiClient/contrib/Google_CustomsearchService.php");
     }
 }

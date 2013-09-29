@@ -11,7 +11,7 @@
  *
  * @category   Pimcore
  * @package    Object_Class
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -59,15 +59,38 @@ class Object_Class_Data_Hotspotimage extends Object_Class_Data_Image {
                 $imageId = $data->getImage()->getId();
             }
 
-            $hotspots = $data->getHotspots();
-            if($hotspots != "null" && !empty($hotspots)) {
-                $hotspots = json_encode($data->getHotspots());
-            } else {
-                $hotspots = null;
-            }
+            $metaData = array(
+                "hotspots" => $data->getHotspots(),
+                "marker" => $data->getMarker(),
+                "crop" => $data->getCrop()
+            );
+
+            $rewritePath = function ($data) {
+
+                if(!is_array($data)) {
+                    return array();
+                }
+
+                foreach ($data as &$element) {
+                    if(array_key_exists("data",$element) && is_array($element["data"]) && count($element["data"]) > 0) {
+                        foreach($element["data"] as &$metaData) {
+                            if($metaData["value"] instanceof Element_Interface) {
+                                $metaData["value"] = $metaData["value"]->getId();
+                            }
+                        }
+                    }
+                }
+                return $data;
+            };
+
+            $metaData["hotspots"] = $rewritePath($metaData["hotspots"]);
+            $metaData["marker"] = $rewritePath($metaData["marker"]);
+
+            $metaData = Pimcore_Tool_Serialize::serialize($metaData);
+
             return array(
                 $this->getName() . "__image" => $imageId,
-                $this->getName() . "__hotspots" => $hotspots
+                $this->getName() . "__hotspots" => $metaData
             );
         }
         return array(
@@ -83,12 +106,46 @@ class Object_Class_Data_Hotspotimage extends Object_Class_Data_Image {
      */
     public function getDataFromResource($data) {
         if($data[$this->getName() . "__image"] || $data[$this->getName() . "__hotspots"]) {
-            $hotspots = json_decode($data[$this->getName() . "__hotspots"]);
-            if($hotspots == "null") {
-                $hotspots = null;
+
+            $metaData = $data[$this->getName() . "__hotspots"];
+
+            // check if the data is JSON (backward compatibility)
+            $md = json_decode($metaData, true);
+            if(!$md) {
+                $md = Pimcore_Tool_Serialize::unserialize($metaData);
+            } else {
+                if(is_array($md) && count($md)) {
+                    $md["hotspots"] = $md;
+                }
             }
 
-            return new Object_Data_Hotspotimage($data[$this->getName() . "__image"], $hotspots);
+            $hotspots = empty($md["hotspots"]) ? null : $md["hotspots"];
+            $marker = empty($md["marker"]) ? null : $md["marker"];
+            $crop = empty($md["crop"]) ? null : $md["crop"];
+
+            $rewritePath = function ($data) {
+
+                if(!is_array($data)) {
+                    return array();
+                }
+
+                foreach ($data as &$element) {
+                    if(array_key_exists("data",$element) && is_array($element["data"]) && count($element["data"]) > 0) {
+                        foreach($element["data"] as &$metaData) {
+                            if(in_array($metaData["type"], array("object","asset","document"))) {
+                                $el = Element_Service::getElementById($metaData["type"], $metaData["value"]);
+                                $metaData["value"] = $el;
+                            }
+                        }
+                    }
+                }
+                return $data;
+            };
+
+            $hotspots = $rewritePath($hotspots);
+            $marker = $rewritePath($marker);
+
+            return new Object_Data_Hotspotimage($data[$this->getName() . "__image"], $hotspots, $marker, $crop);
         }
         return null;
 
@@ -116,9 +173,33 @@ class Object_Class_Data_Hotspotimage extends Object_Class_Data_Image {
             if($data->getImage()) {
                 $imageId = $data->getImage()->getId();
             }
+
+            $rewritePath = function ($data) {
+
+                if(!is_array($data)) {
+                    return array();
+                }
+
+                foreach ($data as &$element) {
+                    if(array_key_exists("data",$element) && is_array($element["data"]) && count($element["data"]) > 0) {
+                        foreach($element["data"] as &$metaData) {
+                            if($metaData["value"] instanceof Element_Interface) {
+                                $metaData["value"] = $metaData["value"]->getFullPath();
+                            }
+                        }
+                    }
+                }
+                return $data;
+            };
+
+            $marker = $rewritePath($data->getMarker());
+            $hotspots = $rewritePath($data->getHotspots());
+
             return array(
                 "image" => $imageId,
-                "hotspots" => $data->getHotspots()
+                "hotspots" => $hotspots,
+                "marker" => $marker,
+                "crop" => $data->getCrop()
             );
         }
         return null;
@@ -131,7 +212,36 @@ class Object_Class_Data_Hotspotimage extends Object_Class_Data_Image {
      * @return Asset
      */
     public function getDataFromEditmode($data, $object = null) {
-        return new Object_Data_Hotspotimage($data["image"], $data["hotspots"]);
+
+        $rewritePath = function ($data) {
+
+            if(!is_array($data)) {
+                return array();
+            }
+
+            foreach ($data as &$element) {
+                if(array_key_exists("data",$element) && is_array($element["data"]) && count($element["data"]) > 0) {
+                    foreach($element["data"] as &$metaData) {
+                        if(in_array($metaData["type"], array("object","asset","document"))) {
+                            $el = Element_Service::getElementByPath($metaData["type"], $metaData["value"]);
+                            $metaData["value"] = $el;
+                        }
+                    }
+                }
+            }
+            return $data;
+        };
+
+        if(array_key_exists("marker",$data) && is_array($data["marker"]) && count($data["marker"]) > 0) {
+            $data["marker"] = $rewritePath($data["marker"]);
+        }
+
+        if(array_key_exists("hotspots",$data) && is_array($data["hotspots"]) && count($data["hotspots"]) > 0) {
+            $data["hotspots"] = $rewritePath($data["hotspots"]);
+        }
+
+
+        return new Object_Data_Hotspotimage($data["image"], $data["hotspots"], $data["marker"], $data["crop"]);
     }
 
     /**
@@ -152,10 +262,9 @@ class Object_Class_Data_Hotspotimage extends Object_Class_Data_Image {
      * @return string
      */
     public function getForCsvExport($object) {
-        $key = $this->getName();
-        $getter = "get".ucfirst($key);
-        if ($object->$getter() instanceof Object_Data_Hotspotimage) {
-            return base64_encode(Pimcore_Tool_Serialize::serialize($object->$getter()));
+        $data = $this->getDataFromObjectParam($object);
+        if ($data instanceof Object_Data_Hotspotimage) {
+            return base64_encode(Pimcore_Tool_Serialize::serialize($data));
         } else return null;
     }
 
@@ -189,7 +298,33 @@ class Object_Class_Data_Hotspotimage extends Object_Class_Data_Image {
             if (!array_key_exists($data->getImage()->getCacheTag(), $tags)) {
                 $tags = $data->getImage()->getCacheTags($tags);
             }
+
+
+            $getMetaDataCacheTags = function ($d, $tags) {
+
+                if(!is_array($d)) {
+                    return $tags;
+                }
+
+                foreach ($d as $element) {
+                    if(array_key_exists("data",$element) && is_array($element["data"]) && count($element["data"]) > 0) {
+                        foreach($element["data"] as $metaData) {
+                            if($metaData["value"] instanceof Element_Interface) {
+                                $tags = $metaData["value"]->getCacheTags($tags);
+                            }
+                        }
+                    }
+                }
+                return $tags;
+            };
+
+            $marker = $data->getMarker();
+            $hotspots = $data->getHotspots();
+
+            $tags = $getMetaDataCacheTags($marker, $tags);
+            $tags = $getMetaDataCacheTags($hotspots, $tags);
         }
+
         return $tags;
     }
 
@@ -205,6 +340,30 @@ class Object_Class_Data_Hotspotimage extends Object_Class_Data_Image {
                 "id" => $data->getImage()->getId(),
                 "type" => "asset"
             );
+
+            $getMetaDataDependencies = function ($data, $dependencies) {
+
+                if(!is_array($data)) {
+                    return $dependencies;
+                }
+
+                foreach ($data as $element) {
+                    if(array_key_exists("data",$element) && is_array($element["data"]) && count($element["data"]) > 0) {
+                        foreach($element["data"] as $metaData) {
+                            if($metaData["value"] instanceof Element_Interface) {
+                                $dependencies[$metaData["type"] . "_" . $metaData["value"]->getId()] = array(
+                                    "id" => $metaData["value"]->getId(),
+                                    "type" => $metaData["type"]
+                                );
+                            }
+                        }
+                    }
+                }
+                return $dependencies;
+            };
+
+            $dependencies = $getMetaDataDependencies($data->getMarker(), $dependencies);
+            $dependencies = $getMetaDataDependencies($data->getHotspots(), $dependencies);
         }
 
         return $dependencies;
@@ -244,5 +403,34 @@ class Object_Class_Data_Hotspotimage extends Object_Class_Data_Image {
         }
     }
 
+    /**
+     * Rewrites id from source to target, $idMapping contains
+     * array(
+     *  "document" => array(
+     *      SOURCE_ID => TARGET_ID,
+     *      SOURCE_ID => TARGET_ID
+     *  ),
+     *  "object" => array(...),
+     *  "asset" => array(...)
+     * )
+     * @param mixed $object
+     * @param array $idMapping
+     * @param array $params
+     * @return Element_Interface
+     */
+    public function rewriteIds($object, $idMapping, $params = array()) {
+        $data = $this->getDataFromObjectParam($object, $params);
+        if($data instanceof Object_Data_Hotspotimage && $data->getImage()) {
+            $id = $data->getImage()->getId();
+            if(array_key_exists("asset", $idMapping) and array_key_exists($id, $idMapping["asset"])) {
+                $data->setImage(Asset::getById($idMapping["asset"][$id]));
 
+                // reset hotspot, marker & crop
+                $data->setHotspots(null);
+                $data->setMarker(null);
+                $data->setCrop(null);
+            }
+        }
+        return $data;
+    }
 }

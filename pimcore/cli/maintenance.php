@@ -9,7 +9,7 @@
  * It is also available through the world-wide-web at this URL:
  * http://www.pimcore.org/license
  *
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -17,23 +17,30 @@ include_once("startup.php");
 
 try {
     $optsConfig = array(
-        'job|j=s' => 'call just a specific job(s), use "," (comma) to execute more than one job (valid options: scheduledtasks, logmaintenance, sanitycheck, cleanupoldpidfiles, versioncleanup, redirectcleanup, cleanupbrokenviews, contentanalysis and plugin classes if you want to call a plugin maintenance)',
+        'job|j=s' => 'call just a specific job(s), use "," (comma) to execute more than one job (valid options: scheduledtasks, logmaintenance, sanitycheck, cleanuplogfiles, versioncleanup, redirectcleanup, cleanupbrokenviews, contentanalysis, usagestatistics, downloadmaxminddb and plugin classes if you want to call a plugin maintenance)',
         'manager|m=s' => 'force a specific manager (valid options: procedural, daemon)',
         'ignore-maintenance-mode' => 'forces the script execution even when the maintenance mode is activated',
         'verbose|v' => 'show detailed information during the maintenance (for debug, ...)',
         'help|h' => 'display this help'
     );
 
+    // parse existing valid arguments => needed to do not add them twice => see below (dynamic add)
+    $existingParams = array();
+    foreach ($optsConfig as $key => $value) {
+        foreach(explode("|",$key) as $v) {
+            $existingParams[] = $v;
+        }
+    }
+
     // dynamically add non recognized options to avoid error messages
-    // @ TODO the code below doesn't check if an option is already defined in $optsConfig
-    /*$arguments = $_SERVER['argv'];
+    $arguments = $_SERVER['argv'];
     array_shift($arguments);
     foreach ($arguments as $arg) {
-        $arg = preg_match("/\-\-?([a-zA-Z0-9]+)(=| )?/", $arg, $matches);
-        if(array_key_exists(1, $matches)) {
+        $arg = preg_match("/\-\-([a-zA-Z0-9]+)?(=| )?/", $arg, $matches);
+        if(array_key_exists(1, $matches) && !in_array($matches[1], $existingParams)) {
             $optsConfig[$matches[1]] = "custom parameter";
         }
-    }*/
+    }
 
     $opts = new Zend_Console_Getopt($optsConfig);
 
@@ -89,19 +96,20 @@ $manager->setValidJobs($validJobs);
 // register scheduled tasks
 $manager->registerJob(new Schedule_Maintenance_Job("scheduledtasks", new Schedule_Task_Executor(), "execute"));
 $manager->registerJob(new Schedule_Maintenance_Job("logmaintenance", new Pimcore_Log_Maintenance(), "mail"));
+$manager->registerJob(new Schedule_Maintenance_Job("cleanuplogfiles", new Pimcore_Log_Maintenance(), "cleanupLogFiles"));
 $manager->registerJob(new Schedule_Maintenance_Job("httperrorlog", new Pimcore_Log_Maintenance(), "httpErrorLogCleanup"));
 $manager->registerJob(new Schedule_Maintenance_Job("usagestatistics", new Pimcore_Log_Maintenance(), "usageStatistics"));
 $manager->registerJob(new Schedule_Maintenance_Job("sanitycheck", "Element_Service", "runSanityCheck"));
-$manager->registerJob(new Schedule_Maintenance_Job("cleanupoldpidfiles", "Schedule_Manager_Factory", "cleanupOldPidFiles"), true);
 $manager->registerJob(new Schedule_Maintenance_Job("versioncleanup", new Version(), "maintenanceCleanUp"));
 $manager->registerJob(new Schedule_Maintenance_Job("redirectcleanup", "Redirect", "maintenanceCleanUp"));
 $manager->registerJob(new Schedule_Maintenance_Job("cleanupbrokenviews", "Pimcore_Resource", "cleanupBrokenViews"));
 $manager->registerJob(new Schedule_Maintenance_Job("contentanalysis", "Tool_ContentAnalysis", "run"));
+$manager->registerJob(new Schedule_Maintenance_Job("downloadmaxminddb", "Pimcore_Update", "updateMaxmindDb"));
 
 // call plugins
 $plugins = Pimcore_API_Plugin_Broker::getInstance()->getPlugins();
 foreach ($plugins as $plugin) {
-    $id = get_class($plugin);
+    $id = str_replace('\\', '_', get_class($plugin));
 
     $jobRegistered = null;
 

@@ -1,4 +1,3 @@
-
 DROP TABLE IF EXISTS `assets`;
 CREATE TABLE `assets` (
   `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
@@ -21,7 +20,7 @@ CREATE TABLE `assets` (
 DROP TABLE IF EXISTS `cache`;
 CREATE TABLE `cache` (
   `id` varchar(165) NOT NULL DEFAULT '',
-  `data` longtext NOT NULL DEFAULT '',
+  `data` longtext,
   `mtime` bigint(20) DEFAULT NULL,
   `expire` bigint(20) DEFAULT NULL,
   PRIMARY KEY (`id`)
@@ -328,7 +327,7 @@ CREATE TABLE `keyvalue_keys` (
   `group` INT,
   PRIMARY KEY (`id`),
   FOREIGN KEY (`group`) REFERENCES keyvalue_groups(`id`) ON DELETE SET NULL
-) DEFAULT CHARSET=utf8;;
+) DEFAULT CHARSET=utf8;
 
 DROP TABLE IF EXISTS `locks`;
 CREATE TABLE `locks` (
@@ -524,6 +523,16 @@ CREATE TABLE `staticroutes` (
   KEY `name` (`name`)
 ) DEFAULT CHARSET=utf8;
 
+DROP TABLE IF EXISTS `targeting_personas`;
+CREATE TABLE `targeting_personas` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL DEFAULT '',
+  `description` text,
+  `conditions` longtext,
+  `threshold` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) DEFAULT CHARSET=utf8;
+
 DROP TABLE IF EXISTS `targeting_rules`;
 CREATE TABLE `targeting_rules` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -531,15 +540,6 @@ CREATE TABLE `targeting_rules` (
   `description` text,
   `conditions` longtext,
   `actions` longtext,
-  PRIMARY KEY (`id`)
-) DEFAULT CHARSET=utf8;
-
-DROP TABLE IF EXISTS `targeting_personas`;
-CREATE TABLE `targeting_personas` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `name` varchar(255) NOT NULL DEFAULT '',
-  `description` text,
-  `conditions` longtext,
   PRIMARY KEY (`id`)
 ) DEFAULT CHARSET=utf8;
 
@@ -704,6 +704,14 @@ CREATE TABLE `users_workspaces_object` (
   KEY `userId` (`userId`)
 ) DEFAULT CHARSET=utf8;
 
+DROP TABLE IF EXISTS `uuids`;
+CREATE TABLE IF NOT EXISTS `uuids` (
+  `uuid` CHAR(36) NOT NULL,
+  `itemId` BIGINT(20) UNSIGNED NOT NULL,
+  `type` VARCHAR(25) NOT NULL,
+  `instanceIdentifier` VARCHAR(50) NOT NULL,
+  UNIQUE INDEX `itemId_type_uuid` (`itemId`, `type`, `uuid`)
+) DEFAULT CHARSET=utf8;
 
 DROP TABLE IF EXISTS `versions`;
 CREATE TABLE `versions` (

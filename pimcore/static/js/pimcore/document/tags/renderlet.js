@@ -8,7 +8,7 @@
  * It is also available through the world-wide-web at this URL:
  * http://www.pimcore.org/license
  *
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -20,19 +20,13 @@ pimcore.document.tags.renderlet = Class.create(pimcore.document.tag, {
     initialize: function(id, name, options, data, inherited) {
         this.id = id;
         this.name = name;
-        this.options = options;
+        this.options = this.parseOptions(options);
 
         this.data = {};
 
-        if (!this.options) {
-            this.options = {};
-        }
         if (!data) {
             data = {};
         }
-
-        // cast array to object
-        this.options = Ext.apply({}, this.options);
 
         // height management
         this.defaultHeight = 100;
@@ -114,6 +108,14 @@ pimcore.document.tags.renderlet = Class.create(pimcore.document.tag, {
 
         var params = this.data;
         Ext.apply(params, this.options);
+
+        try {
+            // add the id of the current document, so that the renderlet knows in which document it is embedded
+            // this information is then grabbed in Pimcore_Controller_Action_Frontend::init() to set the correct locale
+            params["pimcore_parentDocument"] = window.editWindow.document.id;
+        } catch (e) {
+
+        }
 
         Ext.Ajax.request({
             method: "get",

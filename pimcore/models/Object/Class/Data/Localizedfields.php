@@ -11,7 +11,7 @@
  *
  * @category   Pimcore
  * @package    Object_Class
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -164,7 +164,7 @@ class Object_Class_Data_Localizedfields extends Object_Class_Data
      */
     public function getDataFromEditmode($data, $object = null)
     {
-        $localizedFields = $object->{"get" . ucfirst($this->getName())}();
+        $localizedFields = $this->getDataFromObjectParam($object);
 
         if(!$localizedFields instanceof Object_Localizedfield) {
             $localizedFields = new Object_Localizedfield();
@@ -200,6 +200,8 @@ class Object_Class_Data_Localizedfields extends Object_Class_Data
      */
     public function getVersionPreview($data)
     {
+        // this is handled directly in the template
+        // /pimcore/modules/admin/views/scripts/object/preview-version.php
         return "LOCALIZED FIELDS";
     }
 
@@ -390,7 +392,7 @@ class Object_Class_Data_Localizedfields extends Object_Class_Data
 
     public function save($object, $params = array())
     {
-        $localizedFields = $object->{  "get" . ucfirst($this->getName()) }();
+        $localizedFields = $this->getDataFromObjectParam($object);
         if ($localizedFields instanceof Object_Localizedfield) {
             $localizedFields->setObject($object);
             $localizedFields->save();
@@ -408,7 +410,7 @@ class Object_Class_Data_Localizedfields extends Object_Class_Data
 
     public function delete($object)
     {
-        $localizedFields = $object->{ "get" . ucfirst($this->getName()) }();
+        $localizedFields = $this->getDataFromObjectParam($object);
 
         if ($localizedFields instanceof Object_Localizedfield) {
             $localizedFields->setObject($object);
@@ -713,7 +715,7 @@ class Object_Class_Data_Localizedfields extends Object_Class_Data
 
     public function getDiffDataFromEditmode($data, $object = null)
     {
-        $localFields = $object->{"get" . ucfirst($this->getName())}();
+        $localFields = $this->getDataFromObjectParam($object);
         $localData = array();
 
         // get existing data
@@ -775,6 +777,35 @@ class Object_Class_Data_Localizedfields extends Object_Class_Data
         return array_keys($vars);
     }
 
+    /**
+     * Rewrites id from source to target, $idMapping contains
+     * array(
+     *  "document" => array(
+     *      SOURCE_ID => TARGET_ID,
+     *      SOURCE_ID => TARGET_ID
+     *  ),
+     *  "object" => array(...),
+     *  "asset" => array(...)
+     * )
+     * @param mixed $object
+     * @param array $idMapping
+     * @param array $params
+     * @return Element_Interface
+     */
+    public function rewriteIds($object, $idMapping, $params = array()) {
+        $data = $this->getDataFromObjectParam($object, $params);
 
+        $validLanguages = Pimcore_Tool::getValidLanguages();
 
+        foreach ($validLanguages as $language) {
+            foreach ($this->getFieldDefinitions() as $fd) {
+                if(method_exists($fd, "rewriteIds")) {
+                    $d = $fd->rewriteIds($data, $idMapping, array("language" => $language));
+                    $data->setLocalizedValue($fd->getName(), $d, $language);
+                }
+            }
+        }
+
+        return $data;
+    }
 }

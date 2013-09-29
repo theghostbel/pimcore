@@ -9,7 +9,7 @@
  * It is also available through the world-wide-web at this URL:
  * http://www.pimcore.org/license
  *
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -913,9 +913,18 @@ class Pimcore_Tool_RestClient
         return $response;
     }
 
-    public function buildEndpointUrl($customUrlPath)
+    public function deploymentExecuteTargetAction(array $params){
+        $url = $this->buildEndpointUrl("deployment-execute-target",$params);
+        $response = $this->doRequest($url);
+        return $response;
+    }
+
+    public function buildEndpointUrl($customUrlPath,$params = array())
     {
         $url = $this->getBaseUrl() . $customUrlPath . "?apikey=" . $this->getApiKey();
+        if(!empty($params)){
+            $url .= '&' . http_build_query($params);
+        }
         return $url;
     }
 }

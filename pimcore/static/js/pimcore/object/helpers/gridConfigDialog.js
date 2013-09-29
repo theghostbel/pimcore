@@ -1,4 +1,16 @@
-
+/**
+ * Pimcore
+ *
+ * LICENSE
+ *
+ * This source file is subject to the new BSD license that is bundled
+ * with this package in the file LICENSE.txt.
+ * It is also available through the world-wide-web at this URL:
+ * http://www.pimcore.org/license
+ *
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
+ * @license    http://www.pimcore.org/license     New BSD License
+ */
 
 pimcore.registerNS("pimcore.object.helpers.gridConfigDialog");
 pimcore.object.helpers.gridConfigDialog = Class.create({
@@ -55,6 +67,9 @@ pimcore.object.helpers.gridConfigDialog = Class.create({
                 obj.label = child.attributes.text;
                 obj.type = child.attributes.dataType;
                 obj.layout = child.attributes.layout;
+                if (child.attributes.width) {
+                    obj.width = child.attributes.width;
+                }
 
                 this.data.columns.push(obj);
             }.bind(this));
@@ -119,7 +134,7 @@ pimcore.object.helpers.gridConfigDialog = Class.create({
             var childs = [];
             for (var i = 0; i < this.config.selectedGridColumns.length; i++) {
                 var nodeConf = this.config.selectedGridColumns[i];
-                childs.push({
+                var child = {
                     text: nodeConf.label,
                     key: nodeConf.key,
                     type: "data",
@@ -127,7 +142,11 @@ pimcore.object.helpers.gridConfigDialog = Class.create({
                     leaf: true,
                     layout: nodeConf.layout,
                     iconCls: "pimcore_icon_" + nodeConf.dataType
-                });
+                };
+                if (nodeConf.width) {
+                    child.width = nodeConf.width;
+                }
+                childs.push(child);
             }
 
             this.selectionPanel = new Ext.tree.TreePanel({

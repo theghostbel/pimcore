@@ -9,7 +9,7 @@
  * It is also available through the world-wide-web at this URL:
  * http://www.pimcore.org/license dsf sdaf asdf asdf
  *
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -427,9 +427,9 @@ class Admin_AssetController extends Pimcore_Controller_Action_Admin {
         }
 
         $this->_helper->json(array(
-              "hasDependencies" => $hasDependency,
-              "childs" => $childs,
-              "deletejobs" => $deleteJobs
+            "hasDependencies" => $hasDependency,
+            "childs" => $childs,
+            "deletejobs" => $deleteJobs
         ));
     }
 
@@ -515,7 +515,7 @@ class Admin_AssetController extends Pimcore_Controller_Action_Admin {
         } else if ($asset->getType() == "document") {
             try {
                 // add the PDF check here, otherwise the preview layer in admin is shown without content
-                if(Pimcore_Document::isAvailable() && preg_match("/\.pdf$/", $asset->getFilename())) {
+                if(Pimcore_Document::isAvailable() && Pimcore_Document::isFileTypeSupported($asset->getFilename())) {
                     $tmpAsset["thumbnail"] = $this->getThumbnailUrl($asset);
                 }
             } catch (Exception $e) {
@@ -610,11 +610,11 @@ class Admin_AssetController extends Pimcore_Controller_Action_Admin {
         } else if ($asset->isAllowed("rename") &&  $this->getParam("filename")  ) {
             //just rename
             try {
-                    $asset->setFilename($this->getParam("filename"));
-                    $asset->save();
-                    $success = true;
+                $asset->setFilename($this->getParam("filename"));
+                $asset->save();
+                $success = true;
             } catch (Exception $e) {
-                    $this->_helper->json(array("success" => false, "message" => $e->getMessage()));
+                $this->_helper->json(array("success" => false, "message" => $e->getMessage()));
             }
         } else {
             Logger::debug("prevented update asset because of missing permissions ");
@@ -802,7 +802,7 @@ class Admin_AssetController extends Pimcore_Controller_Action_Admin {
                 $thumbnail = $image->getThumbnailConfig($this->getAllParams());
             }
         }
-        
+
         $format = strtolower($thumbnail->getFormat());
         if ($format == "source" || $format == "print") {
             $thumbnail->setFormat("PNG");
@@ -848,7 +848,11 @@ class Admin_AssetController extends Pimcore_Controller_Action_Admin {
 
     public function getVideoThumbnailAction() {
 
-        $video = Asset::getById(intval($this->getParam("id")));
+        if($this->getParam("id")) {
+            $video = Asset::getById(intval($this->getParam("id")));
+        } else if ($this->getParam("path")) {
+            $video = Asset::getByPath($this->getParam("path"));
+        }
         $thumbnail = $video->getImageThumbnailConfig($this->getAllParams());
 
         $format = strtolower($thumbnail->getFormat());
@@ -945,20 +949,7 @@ class Admin_AssetController extends Pimcore_Controller_Action_Admin {
 
         $this->view->asset = $asset;
 
-        $config = new Asset_Video_Thumbnail_Config();
-        $config->setName("pimcore_video_preview_" . $asset->getId());
-        $config->setAudioBitrate(128);
-        $config->setVideoBitrate(700);
-
-        $config->setItems(array(
-            array(
-                "method" => "scaleByWidth",
-                "arguments" =>
-                    array(
-                        "width" => 500
-                    )
-            )
-        ));
+        $config = Asset_Video_Thumbnail_Config::getPreviewConfig();
 
         $thumbnail = $asset->getThumbnail($config, array("mp4"));
 
@@ -1043,8 +1034,11 @@ class Admin_AssetController extends Pimcore_Controller_Action_Admin {
 
         $transactionId = time();
         $pasteJobs = array();
-        $session = new Zend_Session_Namespace("pimcore_copy");
-        $session->$transactionId = array();
+
+        Pimcore_Tool_Session::useSession(function ($session) use ($transactionId) {
+            $session->$transactionId = array();
+        }, "pimcore_copy");
+
 
         if ($this->getParam("type") == "recursive") {
 
@@ -1110,7 +1104,7 @@ class Admin_AssetController extends Pimcore_Controller_Action_Admin {
         $success = false;
         $sourceId = intval($this->getParam("sourceId"));
         $source = Asset::getById($sourceId);
-        $session = new Zend_Session_Namespace("pimcore_copy");
+        $session = Pimcore_Tool_Session::get("pimcore_copy");
 
         $targetId = intval($this->getParam("targetId"));
         if($this->getParam("targetParentId")) {
@@ -1153,6 +1147,8 @@ class Admin_AssetController extends Pimcore_Controller_Action_Admin {
             Logger::error("could not execute copy/paste because of missing permissions on target [ ".$targetId." ]");
             $this->_helper->json(array("error" => false, "message" => "missing_permission"));
         }
+
+        Pimcore_Tool_Session::writeClose();
 
         $this->_helper->json(array("success" => $success));
     }
@@ -1414,8 +1410,6 @@ class Admin_AssetController extends Pimcore_Controller_Action_Admin {
     }
 
     public function importServerFilesAction() {
-
-
         $assetFolder = Asset::getById($this->getParam("parentId"));
         $serverPath = $this->getParam("serverPath");
         $files = explode("::", $this->getParam("files"));
@@ -1423,7 +1417,8 @@ class Admin_AssetController extends Pimcore_Controller_Action_Admin {
         foreach ($files as $file) {
             $absolutePath = $serverPath . $file;
             if(is_file($absolutePath)) {
-                $folder = Asset_Service::createFolderByPath($assetFolder->getFullPath() . dirname($file));
+                $relFolderPath = str_replace('\\', '/', dirname($file));
+                $folder = Asset_Service::createFolderByPath($assetFolder->getFullPath() . $relFolderPath);
                 $filename = basename($file);
 
                 // check for duplicate filename

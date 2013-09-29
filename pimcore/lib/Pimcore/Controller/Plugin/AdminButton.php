@@ -9,7 +9,7 @@
  * It is also available through the world-wide-web at this URL:
  * http://www.pimcore.org/license
  *
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -49,11 +49,18 @@ class Pimcore_Controller_Plugin_AdminButton extends Zend_Controller_Plugin_Abstr
                     $documentId = "null";
                 }
 
+                $personas = array();
+                $list = new Tool_Targeting_Persona_List();
+                foreach($list->load() as $persona) {
+                    $personas[$persona->getId()] = $persona->getName();
+                }
+
                 $code = "\n\n\n<!-- pimcore admin console -->\n";
                 $code .= '<script type="text/javascript">
                     try {
                         var pimcore = pimcore || {};
                         pimcore["admin"] = {documentId: ' . $documentId . ', contactEnabled: ' . Zend_Json::encode($contactEnabled) .'};
+                        pimcore["personas"] = ' . Zend_Json::encode($personas) .';
                     } catch (e) {}
                 </script>';
 

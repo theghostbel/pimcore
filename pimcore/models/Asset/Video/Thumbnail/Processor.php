@@ -11,7 +11,7 @@
  *
  * @category   Pimcore
  * @package    Asset
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
  
@@ -170,11 +170,7 @@ class Asset_Video_Thumbnail_Processor {
         }
 
         // check if there is already a transcoding process running, wait if so ...
-        while($instance->isLocked()) {
-            sleep(10);
-        }
-
-        $instance->lock();
+        Tool_Lock::acquire("video-transcoding", 7200, 10); // expires after 2 hrs, refreshes every 10 secs
 
         // start converting
         foreach ($instance->queue as $converter) {
@@ -208,7 +204,7 @@ class Asset_Video_Thumbnail_Processor {
             }
         }
 
-        $instance->unlock();
+        Tool_Lock::release("video-transcoding");
 
         $asset = Asset::getById($instance->getAssetId());
         if($asset) {
@@ -243,7 +239,10 @@ class Asset_Video_Thumbnail_Processor {
         $instance->setProcessId($processId);
 
         if(is_file($instance->getJobFile())) {
-            $instance = Pimcore_Tool_Serialize::unserialize(file_get_contents($instance->getJobFile()));
+            $i = Pimcore_Tool_Serialize::unserialize(file_get_contents($instance->getJobFile()));
+            if($i instanceof Asset_Video_Thumbnail_Processor) {
+                $instance = $i;
+            }
         }
 
         return $instance->getStatus();
@@ -274,38 +273,6 @@ class Asset_Video_Thumbnail_Processor {
             $processId = $this->getProcessId();
         }
         return PIMCORE_SYSTEM_TEMP_DIRECTORY . "/video-job-" . $processId . ".psf";
-    }
-
-    /**
-     *
-     */
-    protected function lock() {
-        file_put_contents($this->getLockFile(), time());
-    }
-
-    /**
-     *
-     */
-    protected function unlock() {
-        @unlink($this->getLockFile());
-    }
-
-    /**
-     * @return bool
-     */
-    protected function isLocked() {
-        clearstatcache();
-        if(is_file($this->getLockFile()) && filemtime($this->getLockFile()) > (time()-(3600*4))) {
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * @return string
-     */
-    protected function getLockFile () {
-        return PIMCORE_SYSTEM_TEMP_DIRECTORY . "/video-transcoding.pid";
     }
 
     /**

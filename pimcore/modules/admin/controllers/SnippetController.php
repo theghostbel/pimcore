@@ -9,7 +9,7 @@
  * It is also available through the world-wide-web at this URL:
  * http://www.pimcore.org/license
  *
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -60,12 +60,6 @@ class Admin_SnippetController extends Pimcore_Controller_Action_Admin_Document {
 
             $snippet->setUserModification($this->getUser()->getId());
 
-            // save to session
-            $key = "document_" . $this->getParam("id");
-            $session = new Zend_Session_Namespace("pimcore_documents");
-            $session->$key = $snippet;
-
-
             if ($this->getParam("task") == "unpublish") {
                 $snippet->setPublished(false);
             }
@@ -79,6 +73,7 @@ class Admin_SnippetController extends Pimcore_Controller_Action_Admin_Document {
 
                 try {
                     $snippet->save();
+                    $this->saveToSession($snippet);
                     $this->_helper->json(array("success" => true));
                 } catch (Exception $e) {
                     $this->_helper->json(array("success" => false, "message" => $e->getMessage()));
@@ -92,6 +87,7 @@ class Admin_SnippetController extends Pimcore_Controller_Action_Admin_Document {
 
                     try {
                         $snippet->saveVersion();
+                        $this->saveToSession($snippet);
                         $this->_helper->json(array("success" => true));
                     } catch (Exception $e) {
                         $this->_helper->json(array("success" => false, "message" => $e->getMessage()));

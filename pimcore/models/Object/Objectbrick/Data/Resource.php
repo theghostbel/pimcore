@@ -11,7 +11,7 @@
  *
  * @category   Pimcore
  * @package    Object_Objectbrick
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -57,22 +57,16 @@ class Object_Objectbrick_Data_Resource extends Pimcore_Model_Resource_Abstract {
         foreach ($fd as $key => $value) {
             $getter = "get" . ucfirst($value->getName());
             
-                if (method_exists($fd, "save")) {
-                    // for fieldtypes which have their own save algorithm eg. objects, multihref, ...
-                    $value->save($this->model);
-
+            if (method_exists($value, "save")) {
+                // for fieldtypes which have their own save algorithm eg. objects, multihref, ...
+                $value->save($this->model);
+            } else if ($value->getColumnType()) {
+                if (is_array($value->getColumnType())) {
+                    $insertDataArray = $value->getDataForResource($this->model->$getter(), $object);
+                    $data = array_merge($data, $insertDataArray);
                 } else {
-                if ($value->getColumnType()) {
-                    if (is_array($value->getColumnType())) {
-                        $insertDataArray = $value->getDataForResource($this->model->$getter(), $object);
-                        $data = array_merge($data, $insertDataArray);
-                    } else {
-                        $insertData = $value->getDataForResource($this->model->$getter(), $object);
-                        $data[$key] = $insertData;
-                    }
-                } else if (method_exists($value, "save")) {
-                    // for fieldtypes which have their own save algorithm eg. fieldcollections
-                    $value->save($this->model);
+                    $insertData = $value->getDataForResource($this->model->$getter(), $object);
+                    $data[$key] = $insertData;
                 }
             }
         }

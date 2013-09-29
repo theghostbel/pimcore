@@ -9,7 +9,7 @@
  * It is also available through the world-wide-web at this URL:
  * http://www.pimcore.org/license
  *
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -169,11 +169,15 @@ class Admin_ObjectHelperController extends Pimcore_Controller_Action_Admin {
             foreach($savedColumns as $key => $sc) {
                 if(!$sc['hidden']) {
                     if(in_array($key, $systemColumns)) {
-                        $availableFields[] = array(
+                        $colConfig = array(
                             "key" => $key,
                             "type" => "system",
                             "label" => $key,
                             "position" => $sc['position']);
+                        if (isset($sc['width'])) {
+                            $colConfig['width'] = $sc['width'];
+                        }
+                        $availableFields[] = $colConfig;
                     } else {
                         $keyParts = explode("~", $key);
 
@@ -191,6 +195,9 @@ class Admin_ObjectHelperController extends Pimcore_Controller_Action_Admin {
                             if(!empty($fd)) {
                                 $fieldConfig = $this->getFieldGridConfig($fd, $gridType, $sc['position'], true, $brick . "~");
                                 if(!empty($fieldConfig)) {
+                                    if (isset($sc['width'])) {
+                                        $fieldConfig['width'] = $sc['width'];
+                                    }
                                     $availableFields[] = $fieldConfig;
                                 }
                             }
@@ -209,6 +216,10 @@ class Admin_ObjectHelperController extends Pimcore_Controller_Action_Admin {
                             if(!empty($fd)) {
                                 $fieldConfig = $this->getFieldGridConfig($fd, $gridType, $sc['position'], true);
                                 if(!empty($fieldConfig)) {
+                                    if (isset($sc['width'])) {
+                                        $fieldConfig['width'] = $sc['width'];
+                                    }
+
                                     $availableFields[] = $fieldConfig;
                                 }
                             }
@@ -360,11 +371,7 @@ class Admin_ObjectHelperController extends Pimcore_Controller_Action_Admin {
     public function importUploadAction()
     {
         $data = file_get_contents($_FILES["Filedata"]["tmp_name"]);
-
-        $encoding = Pimcore_Tool_Text::detectEncoding($data);
-        if ($encoding) {
-            $data = iconv($encoding, "UTF-8", $data);
-        }
+        $data = Pimcore_Tool_Text::convertToUTF8($data);
 
         $importFile = PIMCORE_SYSTEM_TEMP_DIRECTORY . "/import_" . $this->getParam("id");
         file_put_contents($importFile, $data);

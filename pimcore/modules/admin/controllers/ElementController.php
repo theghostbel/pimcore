@@ -9,7 +9,7 @@
  * It is also available through the world-wide-web at this URL:
  * http://www.pimcore.org/license
  *
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
  
@@ -42,9 +42,35 @@ class Admin_ElementController extends Pimcore_Controller_Action_Admin {
 
     public function getSubtypeAction () {
 
-        $id = (int) $this->getParam("id");
+        $idOrPath = $this->getParam("id");
         $type = $this->getParam("type");
-        $el = Element_Service::getElementById($type, $id);
+        if (is_numeric($idOrPath)) {
+            $el = Element_Service::getElementById($type, (int) $idOrPath);
+        } else {
+            if ($type == "document") {
+                $urlParts = parse_url($idOrPath);
+                if($urlParts["path"]) {
+                    $document = Document::getByPath($urlParts["path"]);
+
+                    // search for a page in a site
+                    if(!$document) {
+                        $sitesList = new Site_List();
+                        $sitesObjects = $sitesList->load();
+
+                        foreach ($sitesObjects as $site) {
+                            if ($site->getRootDocument() && in_array($urlParts["host"],$site->getDomains())) {
+                                if($document = Document::getByPath($site->getRootDocument() . $urlParts["path"])) {
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+                $el = $document;
+            } else {
+                $el = Element_Service::getElementByPath($type, $idOrPath);
+            }
+        }
 
         if($el) {
             if($el instanceof Asset || $el instanceof Document) {
@@ -57,7 +83,7 @@ class Admin_ElementController extends Pimcore_Controller_Action_Admin {
 
             $this->_helper->json(array(
                 "subtype" => $subtype,
-                "id" => $id,
+                "id" => $el->getId(),
                 "type" => $type,
                 "success" => true
             ));
@@ -198,5 +224,73 @@ class Admin_ElementController extends Pimcore_Controller_Action_Admin {
         ));
     }
 
+    public function findUsagesAction() {
 
+        if($this->getParam("id")) {
+            $element = Element_Service::getElementById($this->getParam("type"), $this->getParam("id"));
+        } else if ($this->getParam("path")) {
+            $element = Element_Service::getElementByPath($this->getParam("type"), $this->getParam("path"));
+        }
+
+        $results = array();
+        $success = false;
+
+        if($element) {
+            $elements = $element->getDependencies()->getRequiredBy();
+            foreach ($elements as $el) {
+                $item = Element_Service::getElementById($el["type"], $el["id"]);
+                if($item instanceof Element_Interface) {
+                    $el["path"] = $item->getFullpath();
+                    $results[] = $el;
+                }
+            }
+            $success = true;
+        }
+
+        $this->_helper->json(array(
+            "data" => $results,
+            "success" => $success
+        ));
+    }
+
+    public function replaceAssignmentsAction() {
+
+        $success = false;
+        $message = "";
+        $element = Element_Service::getElementById($this->getParam("type"), $this->getParam("id"));
+        $sourceEl = Element_Service::getElementById($this->getParam("sourceType"), $this->getParam("sourceId"));
+        $targetEl = Element_Service::getElementById($this->getParam("targetType"), $this->getParam("targetId"));
+
+        if($element && $sourceEl && $targetEl
+            && $this->getParam("sourceType") == $this->getParam("targetType")
+            && $sourceEl->getType() == $targetEl->getType()
+        ) {
+
+            $rewriteConfig = array(
+                $this->getParam("sourceType") => array(
+                    $sourceEl->getId() => $targetEl->getId()
+                )
+            );
+
+            if($element instanceof Document) {
+                $element = Document_Service::rewriteIds($element, $rewriteConfig);
+            } else if ($element instanceof Object_Abstract) {
+                $element = Object_Service::rewriteIds($element, $rewriteConfig);
+            } else if ($element instanceof Asset) {
+                $element = Asset_Service::rewriteIds($element, $rewriteConfig);
+            }
+
+            $element->setUserModification($this->getUser()->getId());
+            $element->save();
+
+            $success = true;
+        } else {
+            $message = "source-type and target-type do not match";
+        }
+
+        $this->_helper->json(array(
+            "success" => $success,
+            "message" => $message
+        ));
+    }
 }

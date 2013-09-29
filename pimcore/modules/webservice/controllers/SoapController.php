@@ -9,7 +9,7 @@
  * It is also available through the world-wide-web at this URL:
  * http://www.pimcore.org/license
  *
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -65,6 +65,7 @@ class Webservice_SoapController extends Pimcore_Controller_Action_Webservice {
             Document::setHideUnpublished(false);
             Object_Abstract::setHideUnpublished(false);
             Object_Abstract::setGetInheritedValues(false);
+            Object_Localizedfield::setGetFallbackValues(false);
 
             try {
                 $server = new Zend_Soap_Server($wsdlFile, array(

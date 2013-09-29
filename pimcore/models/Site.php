@@ -11,7 +11,7 @@
  *
  * @category   Pimcore
  * @package    Site
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -73,7 +73,7 @@ class Site extends Pimcore_Model_Abstract {
     public static function getByDomain($domain) {
         
         // cached because this is called in the route (Pimcore_Controller_Router_Route_Frontend)
-        $cacheKey = "site_domain_".str_replace(array(".","-"),"_",$domain);
+        $cacheKey = "site_domain_".str_replace(array(".","-",":"),"_",$domain);
         if (!$site = Pimcore_Model_Cache::load($cacheKey)) {
             $site = new self();
             
@@ -259,7 +259,7 @@ class Site extends Pimcore_Model_Abstract {
             Pimcore_Model_Cache::clearTag("site");
         }
         catch (Exception $e) {
-            Logger::info($e);
+            Logger::crit($e);
         }
     }
 }

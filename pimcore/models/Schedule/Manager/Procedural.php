@@ -11,7 +11,7 @@
  *
  * @category   Pimcore
  * @package    Schedule
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -74,19 +74,14 @@ class Schedule_Manager_Procedural {
         }
     }
 
-    public function getPidFile() {
-        return PIMCORE_SYSTEM_TEMP_DIRECTORY . "/".$this->_pidFileName;
-    }
-
     public function setLastExecution() {
-        file_put_contents($this->getPidFile(), time());
-        chmod($this->getPidFile(), 0766);
-        return $this;
+        Tool_Lock::lock($this->_pidFileName);
     }
 
     public function getLastExecution() {
-        if (is_file($this->getPidFile())) {
-            return file_get_contents($this->getPidFile());
+        $lock = Tool_Lock::get($this->_pidFileName);
+        if($date = $lock->getDate()) {
+            return $date;
         }
         return;
     }

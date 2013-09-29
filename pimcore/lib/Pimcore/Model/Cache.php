@@ -9,7 +9,7 @@
  * It is also available through the world-wide-web at this URL:
  * http://www.pimcore.org/license
  *
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -155,6 +155,12 @@ class Pimcore_Model_Cache {
         // always enable the automatic_serialization in this case Pimcore_Tool_Serialize is not used
         self::$instance->setOption("automatic_serialization", true);
 
+        // init the write lock once (from other processes etc.)
+        if(self::$writeLockTimestamp === null) {
+            self::$writeLockTimestamp = 0; // set the write lock to 0, otherwise infinite loop (self::hasWriteLock() calls self::getInstance())
+            self::hasWriteLock();
+        }
+
         return self::$instance;
     }
 
@@ -190,13 +196,16 @@ class Pimcore_Model_Cache {
         );
         $config["customFrontendNaming"] = false;
 
-        $config["backendType"] = "Pimcore_Cache_Backend_MysqlTable";
-        $config["backendConfig"] = array();
-        $config["customBackendNaming"] = true;
-
-        // create cache dir
-        if(!is_dir(PIMCORE_CACHE_DIRECTORY)) {
-            mkdir(PIMCORE_CACHE_DIRECTORY, 0777, true);
+        if(Pimcore_Config::getSystemConfig()) {
+            $config["backendType"] = "Pimcore_Cache_Backend_MysqlTable";
+            $config["backendConfig"] = array();
+            $config["customBackendNaming"] = true;
+        } else {
+            // file fallback if mysql isn't available (at install, ...)
+            $config["backendType"] = "Zend_Cache_Backend_BlackHole"; // just BlackHole doesn't work, that's why customBackendNaming=true
+            $config["backendConfig"] = array();
+            $config["customBackendNaming"] = true;
+            self::disable(); // disable it here too
         }
 
         return $config;
@@ -242,6 +251,11 @@ class Pimcore_Model_Cache {
      */
     public static function save($data, $key, $tags = array(), $lifetime = null, $priority = 0, $force = false) {
         if(self::getForceImmediateWrite() || $force) {
+
+            if(self::hasWriteLock()) {
+                return;
+            }
+
             self::storeToCache($data, $key, $tags, $lifetime, $priority, $force);
         } else {
             self::addToSaveStack(array($data, $key, $tags, $lifetime, $priority, $force));
@@ -434,12 +448,21 @@ class Pimcore_Model_Cache {
      * @return bool
      */
     public static function hasWriteLock() {
+
+        if(self::$writeLockTimestamp) {
+            return true;
+        }
+
         $lock = self::load("system_cache_write_lock");
 
         // lock is valid for 30 secs
         if($lock && $lock > (time()-30)) {
+            self::$writeLockTimestamp = $lock;
             return true;
+        } else {
+            self::$writeLockTimestamp = 0;
         }
+
         return false;
     }
 
@@ -533,17 +556,17 @@ class Pimcore_Model_Cache {
              self::addClearTagOnShutdown("output");
         }
 
+        // add tag to clear stack
+        foreach ($tags as $tag) {
+            self::$clearedTagsStack[] = $tag;
+        }
+
         // clean tags, except output
         if($cache = self::getInstance()) {
             $cache->clean(
                 Zend_Cache::CLEANING_MODE_MATCHING_ANY_TAG,
                 $tags
             );
-        }
-        
-        // add tag to clear stack
-        foreach ($tags as $tag) {
-            self::$clearedTagsStack[] = $tag;
         }
     }
 

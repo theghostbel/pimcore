@@ -9,7 +9,7 @@
  * It is also available through the world-wide-web at this URL:
  * http://www.pimcore.org/license
  *
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -89,11 +89,5 @@ class Admin_IndexController extends Pimcore_Controller_Action_Admin {
         // live connect
         $liveconnectToken = Pimcore_Liveconnect::getToken();
         $this->view->liveconnectToken = $liveconnectToken;
-
-        // adding css minify filter because of IE issues with CkEditor and more than 31 stylesheets
-        if(!PIMCORE_DEVMODE) {
-            $front = Zend_Controller_Front::getInstance();
-            $front->registerPlugin(new Pimcore_Controller_Plugin_CssMinify(), 800);
-        }
     }
 }

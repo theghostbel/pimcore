@@ -11,7 +11,7 @@
  *
  * @category   Pimcore
  * @package    Object_Class
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -57,14 +57,14 @@ class Object_Class_Data_Table extends Object_Class_Data {
      *
      * @var string
      */
-    public $queryColumnType = "text";
+    public $queryColumnType = "longtext";
 
     /**
      * Type for the column
      *
      * @var string
      */
-    public $columnType = "text";
+    public $columnType = "longtext";
 
     /**
      * Type for the generated phpdoc
@@ -265,10 +265,9 @@ class Object_Class_Data_Table extends Object_Class_Data {
       * @return string
       */
     public function getForCsvExport($object) {
-        $key = $this->getName();
-        $getter = "get".ucfirst($key);
-        if (is_array($object->$getter())) {
-            return base64_encode(Pimcore_Tool_Serialize::serialize($object->$getter()));
+        $data = $this->getDataFromObjectParam($object);
+        if (is_array($data)) {
+            return base64_encode(Pimcore_Tool_Serialize::serialize($data));
         } else return null;
 
     }

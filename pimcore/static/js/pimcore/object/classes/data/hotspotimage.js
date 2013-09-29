@@ -8,7 +8,7 @@
  * It is also available through the world-wide-web at this URL:
  * http://www.pimcore.org/license
  *
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -39,7 +39,7 @@ pimcore.object.classes.data.hotspotimage = Class.create(pimcore.object.classes.d
     },
 
     getTypeName: function () {
-        return t("hotspotimage");
+        return t("imageadvanced");
     },
 
     getIconClass: function () {

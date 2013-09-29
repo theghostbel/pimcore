@@ -9,7 +9,7 @@
  * It is also available through the world-wide-web at this URL:
  * http://www.pimcore.org/license
  *
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
  
@@ -23,7 +23,7 @@ class Extensionmanager_UpdateController extends Pimcore_Controller_Action_Admin 
 
         if($type == "plugin") {
             $extensionPath = PIMCORE_PLUGINS_PATH . "/" . $id;
-        } else if ($type = "brick") {
+        } else if ($type == "brick") {
             $extensionPath = PIMCORE_WEBSITE_VAR . "/areas/" . $id;
         }
 
@@ -86,7 +86,7 @@ class Extensionmanager_UpdateController extends Pimcore_Controller_Action_Admin 
 
         if($type == "plugin") {
             $extensionPath = PIMCORE_PLUGINS_PATH . "/" . $id;
-        } else if ($type = "brick") {
+        } else if ($type == "brick") {
             $extensionPath = PIMCORE_WEBSITE_VAR . "/areas/" . $id;
         }
 

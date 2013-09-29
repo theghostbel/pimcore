@@ -9,7 +9,7 @@
  * It is also available through the world-wide-web at this URL:
  * http://www.pimcore.org/license
  *
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -77,7 +77,7 @@ class Admin_UserController extends Pimcore_Controller_Action_Admin {
             $className = User_Service::getClassNameForType($this->getParam("type"));
             $user = $className::create(array(
                 "parentId" => intval($this->getParam("parentId")),
-                "name" => $this->getParam("name"),
+                "name" => trim($this->getParam("name")),
                 "password" => md5(microtime()),
                 "active" => $this->getParam("active")
             ));
@@ -279,10 +279,13 @@ class Admin_UserController extends Pimcore_Controller_Action_Admin {
 
                     if(empty($values["old_password"])) {
                         // if the user want to reset the password, the old password isn't required
-                        $adminSession = Pimcore_Tool_Authentication::getSession();
-                        if($adminSession->password_reset) {
-                            $oldPasswordCheck = true;
-                        }
+                        $oldPasswordCheck = Pimcore_Tool_Session::useSession(function($adminSession) use ($oldPasswordCheck) {
+                            if($adminSession->password_reset) {
+                                return true;
+                            }
+                            return false;
+                        });
+
                     } else {
                         // the password have to match
                         $oldPassword = Pimcore_Tool_Authentication::getPasswordHash($user->getName(),$values["old_password"]);
@@ -441,7 +444,7 @@ class Admin_UserController extends Pimcore_Controller_Action_Admin {
             if(!file_exists($thumb)) {
                 $image = Pimcore_Image::getInstance();
                 $image->load($user);
-                $image->cover(45,45);
+                $image->cover(46,46);
                 $image->save($thumb, "png");
             }
             $path = $thumb;

@@ -8,7 +8,7 @@
  * It is also available through the world-wide-web at this URL:
  * http://www.pimcore.org/license
  *
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -165,7 +165,7 @@ pimcore.object.classes.data.data = Class.create({
             items: [
                 {
                     xtype: "form",
-                    title: t("general_settings") + " (" + t(this.getType()) + ")",
+                    title: t("general_settings") + " (" + (this.getTypeName() ? this.getTypeName() : t(this.getType())) + ")",
                     bodyStyle: "padding: 10px;",
                     style: "margin: 10px 0 10px 0",
                     labelWidth: 140,

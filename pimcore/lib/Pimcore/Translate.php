@@ -9,7 +9,7 @@
  * It is also available through the world-wide-web at this URL:
  * http://www.pimcore.org/license
  *
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -27,6 +27,11 @@ class Pimcore_Translate extends Zend_Translate_Adapter {
      * @var array
      */
     protected $_translate = array();
+
+    /**
+     * @var bool
+     */
+    protected $isCacheable = true;
     
 
     /**
@@ -54,24 +59,30 @@ class Pimcore_Translate extends Zend_Translate_Adapter {
      */
     protected function _loadTranslationData($data, $locale, array $options = array()) {
 
-        $listClass = self::getBackend() . "_List";
-        $list = new $listClass();
-        $list->load();
+        $locale = (string) $locale;
+        $cacheKey = self::getBackend() . "_data_" . $locale;
 
-        foreach ($list->getTranslations() as $translation) {
-            if($translation instanceof Translation_Abstract) {
-                foreach ($translation->getTranslations() as $language => $text) {
-                    $this->_translate[$language][mb_strtolower($translation->getKey())] = Pimcore_Tool_Text::removeLineBreaks($text);
+        if(!$data = Pimcore_Model_Cache::load($cacheKey)) {
+            $data = array("__pimcore_dummy" => "only_a_dummy");
+            $listClass = self::getBackend() . "_List";
+            $list = new $listClass();
+
+            if($list->isCacheable()) {
+                $list->setCondition("language = ?", array($locale));
+                $translations = $list->loadRaw();
+
+                foreach ($translations as $translation) {
+                    $data[mb_strtolower($translation["key"])] = Pimcore_Tool_Text::removeLineBreaks($translation["text"]);
                 }
+
+                Pimcore_Model_Cache::save($data, $cacheKey, array("translator","translator_website","translate"), null, 999);
+                $this->isCacheable = true;
+            } else {
+                $this->isCacheable = false;
             }
         }
 
-        $availableLanguages = (array) Pimcore_Tool::getValidLanguages();
-        foreach ($availableLanguages as $language) {
-            if(!array_key_exists($language,$this->_translate) || empty($this->_translate[$language])) {
-                $this->_translate[$language] = array("__pimcore_dummy" => "only_a_dummy");
-            }
-        }
+        $this->_translate[$locale] = $data;
 
         return $this->_translate;
     }
@@ -104,7 +115,22 @@ class Pimcore_Translate extends Zend_Translate_Adapter {
         if ($locale === null) {
             $locale = $this->_options['locale'];
         }
-        
+
+        // list isn't cacheable, just get a single item
+        if(!$this->isCacheable) {
+            $backend = self::getBackend();
+            $translation = $backend::getByKeyLocalized($messageIdOriginal, true, true, $locale);
+            if($translation == $messageIdOriginal) {
+                foreach(Pimcore_Tool::getFallbackLanguagesFor($locale) as $fallbackLanguage) {
+                    $translation = $backend::getByKeyLocalized($messageIdOriginal, true, true, $fallbackLanguage);
+                    if($translation != $messageIdOriginal) {
+                        break;
+                    }
+                }
+            }
+            return $translation;
+        }
+
         if(empty($this->_translate[$locale])) {
             $this->_loadTranslationData(null,$locale);
         }
@@ -133,7 +159,7 @@ class Pimcore_Translate extends Zend_Translate_Adapter {
 
         // do not create a new translation if it is only empty, but do not return empty values
         if(!array_key_exists($messageId, $this->_translate[$locale])) {
-            $this->createEmptyTranslation($locale, $messageId);
+            $this->createEmptyTranslation($locale, $messageIdOriginal);
         } else {
             // look for a fallback translation
             foreach(Pimcore_Tool::getFallbackLanguagesFor($locale) as $fallbackLanguage) {
@@ -152,7 +178,10 @@ class Pimcore_Translate extends Zend_Translate_Adapter {
      * @param $messageId
      * @return mixed
      */
-    private function createEmptyTranslation($locale, $messageId) {
+    protected function createEmptyTranslation($locale, $messageId) {
+
+        $messageIdOriginal = $messageId;
+        $messageId = mb_strtolower($messageId);
 
         // don't create translation if it's just empty
         if(array_key_exists($messageId, $this->_translate[$locale])) {
@@ -183,7 +212,7 @@ class Pimcore_Translate extends Zend_Translate_Adapter {
 
         // put it into the store, otherwise when there are more calls to the same key during one process
         // the key would be inserted/updated several times, what would be redundant
-        $this->_translate[$locale][$messageId] = $messageId;
+        $this->_translate[$locale][$messageId] = $messageIdOriginal;
     }
 
     /**

@@ -11,7 +11,7 @@
  *
  * @category   Pimcore
  * @package    Object
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -128,7 +128,7 @@ class Object_Concrete_Resource_InheritanceHelper {
 
 
     private function buildTree($currentParentId, $fields) {
-        $result = $this->db->fetchAll("SELECT a." . $this->idField . " AS id $fields FROM " . $this->storetable . " a INNER JOIN objects b ON a." . $this->idField . " = b.o_id WHERE o_parentId = ?", $currentParentId);
+        $result = $this->db->fetchAll("SELECT a." . $this->idField . " AS id $fields FROM " . $this->storetable . " a INNER JOIN objects b ON a." . $this->idField . " = b.o_id WHERE o_parentId = ? GROUP BY a." . $this->idField, $currentParentId);
 
         $objects = array();
 

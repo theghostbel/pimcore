@@ -11,7 +11,7 @@
  *
  * @category   Pimcore
  * @package    Tool
- * @copyright  Copyright (c) 2009-2010 elements.at New Media Solutions GmbH (http://www.elements.at)
+ * @copyright  Copyright (c) 2009-2013 pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     New BSD License
  */
 
@@ -155,6 +155,7 @@ class Tool_Setup_Resource extends Pimcore_Model_Resource_Abstract {
             array("key" => "bounce_mail_inbox"),
             array("key" => "website_settings"),
             array("key" => "newsletter"),
+            array("key" => "deployment"),
         );
         foreach ($userPermissions as $up) {
             $this->db->insert("users_permission_definitions", $up);
